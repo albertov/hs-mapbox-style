@@ -40,72 +40,72 @@ import Prelude (fail)
 type Number = Scientific
 
 data Expr a where
-  Array :: IsValue b => Expr b -> Maybe ArrayCheck -> Expr [a]
-  Boolean :: Expr Value -> [Expr Value] -> Expr Bool
-  Lit   :: a -> Expr a
-  Number :: Expr Value -> [Expr Value] -> Expr a
-  Object :: Expr Value -> [Expr Value] -> Expr (StrMap a)
-  String :: Expr Value -> [Expr Value] -> Expr Text
-  ToBoolean :: IsValue b => Expr b -> Expr Bool
-  ToColor :: Expr Value -> [Expr Value] -> Expr Color
-  ToNumber :: Expr Value -> [Expr Value] -> Expr a
-  ToString :: Expr Value -> [Expr Value] -> Expr Text
-  TypeOf :: IsValue b => Expr b -> Expr Text
-  GeometryType :: Expr Text
-  Id           :: Expr a
-  Properties :: Expr (StrMap a)
-  At         :: Int -> Expr [a] -> Expr a
-  Get         :: Text -> Maybe (Expr (StrMap a)) -> Expr a
-  Has         :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
-  NotHas      :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
-  Length :: IsValue b => Expr b -> Expr a
-  Not    :: Expr Bool -> Expr Bool
-  NotEqual    :: (Eq b, IsValue b) => Expr b -> Expr b -> Expr Bool
-  LessThan :: IsValue b => Expr b -> Expr b -> Expr Bool
-  LessThanEq :: IsValue b => Expr b -> Expr b -> Expr Bool
-  Equal :: (Eq b, IsValue b) => Expr b -> Expr b -> Expr Bool
-  GreaterThan :: IsValue b => Expr b -> Expr b -> Expr Bool
-  GreaterThanEq :: IsValue b => Expr b -> Expr b -> Expr Bool
-  All :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-  Any :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-  None :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-  In   :: IsValue b => Expr b -> [Expr b] -> Expr Bool
-  NotIn :: IsValue b => Expr b -> [Expr b] -> Expr Bool
-  Case :: [(Expr Bool, Expr a)] -> Expr a -> Expr a
-  Coalesce :: Expr a -> Expr a -> [Expr a] -> Expr a
-  Match :: IsValue b => Expr b -> [(Expr b, Expr a)] -> Expr a -> Expr a
-  Interpolate :: Interpolation -> Expr Number -> [(Expr Number, Expr a)] -> Expr a
-  Step :: Expr Number -> Expr a -> [(Expr Number, Expr a)] -> Expr a
-  Let :: IsValue b => Bindings b -> Expr a -> Expr a
-  Var :: Text -> Expr a
-  Concat :: Expr Text -> Expr Text -> [Expr Text] -> Expr Text
-  Downcase :: Expr Text -> Expr Text
-  Upcase :: Expr Text -> Expr Text
-  RGB    :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
-  RGBA   :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr UnitInterval -> Expr Color
-  ToRGBA :: Expr Color -> Expr [a]
-  Minus   :: Expr a -> Expr a -> Expr a
-  Mult    :: Expr a -> Expr a -> Expr a
-  Div     :: Expr a -> Expr a -> Expr a
-  Mod     :: Expr a -> Expr a -> Expr a
-  Pow     :: Expr a -> Expr a -> Expr a
-  Plus    :: Expr a -> Expr a -> Expr a
-  Acos    :: Expr a -> Expr a
-  Asin    :: Expr a -> Expr a
-  Atan    :: Expr a -> Expr a
-  Cos    :: Expr a -> Expr a
-  E       :: Expr a
-  Ln      :: Expr a -> Expr a
-  Ln2     :: Expr a
-  Log10   :: Expr a -> Expr a
-  Log2    :: Expr a -> Expr a
-  Max     :: Expr a -> Expr a -> [Expr a] -> Expr a
-  Min     :: Expr a -> Expr a -> [Expr a] -> Expr a
-  Pi      :: Expr a
-  Sin    :: Expr a -> Expr a
-  Sqrt    :: Expr a -> Expr a
-  Tan    :: Expr a -> Expr a
-  Zoom      :: Expr a
+  Array          :: IsValue b => Expr b -> Maybe ArrayCheck -> Expr [a]
+  Boolean        :: Expr Value -> [Expr Value] -> Expr Bool
+  Lit            :: a -> Expr a
+  Number         :: Expr Value -> [Expr Value] -> Expr a
+  Object         :: Expr Value -> [Expr Value] -> Expr (StrMap a)
+  String         :: Expr Value -> [Expr Value] -> Expr Text
+  ToBoolean      :: IsValue b => Expr b -> Expr Bool
+  ToColor        :: Expr Value -> [Expr Value] -> Expr Color
+  ToNumber       :: Expr Value -> [Expr Value] -> Expr a
+  ToString       :: Expr Value -> [Expr Value] -> Expr Text
+  TypeOf         :: IsValue b => Expr b -> Expr Text
+  GeometryType   :: Expr Text
+  Id             :: Expr a
+  Properties     :: Expr (StrMap a)
+  At             :: Int -> Expr [a] -> Expr a
+  Get            :: Text -> Maybe (Expr (StrMap a)) -> Expr a
+  Has            :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
+  NotHas         :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
+  Length         :: IsValue b => Expr b -> Expr a
+  Not            :: Expr Bool -> Expr Bool
+  NotEqual       :: IsValue b => Expr b -> Expr b -> Expr Bool
+  LessThan       :: IsValue b => Expr b -> Expr b -> Expr Bool
+  LessThanEq     :: IsValue b => Expr b -> Expr b -> Expr Bool
+  Equal          :: IsValue b => Expr b -> Expr b -> Expr Bool
+  GreaterThan    :: IsValue b => Expr b -> Expr b -> Expr Bool
+  GreaterThanEq  :: IsValue b => Expr b -> Expr b -> Expr Bool
+  All            :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+  Any            :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+  None           :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+  In             :: IsValue b => Expr b -> [Expr b] -> Expr Bool
+  NotIn          :: IsValue b => Expr b -> [Expr b] -> Expr Bool
+  Case           :: [(Expr Bool, Expr a)] -> Expr a -> Expr a
+  Coalesce       :: Expr a -> Expr a -> [Expr a] -> Expr a
+  Match          :: IsValue b => Expr b -> [(Expr b, Expr a)] -> Expr a -> Expr a
+  Interpolate    :: Interpolation -> Expr Number -> [(Expr Number, Expr a)] -> Expr a
+  Step           :: Expr Number -> Expr a -> [(Expr Number, Expr a)] -> Expr a
+  Let            :: IsValue b => Bindings b -> Expr a -> Expr a
+  Var            :: Text -> Expr a
+  Concat         :: Expr Text -> Expr Text -> [Expr Text] -> Expr Text
+  Downcase       :: Expr Text -> Expr Text
+  Upcase         :: Expr Text -> Expr Text
+  RGB            :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
+  RGBA           :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr UnitInterval -> Expr Color
+  ToRGBA         :: Expr Color -> Expr [a]
+  Minus          :: Expr a -> Expr a -> Expr a
+  Mult           :: Expr a -> Expr a -> Expr a
+  Div            :: Expr a -> Expr a -> Expr a
+  Mod            :: Expr a -> Expr a -> Expr a
+  Pow            :: Expr a -> Expr a -> Expr a
+  Plus           :: Expr a -> Expr a -> Expr a
+  Acos           :: Expr a -> Expr a
+  Asin           :: Expr a -> Expr a
+  Atan           :: Expr a -> Expr a
+  Cos            :: Expr a -> Expr a
+  E              :: Expr a
+  Ln             :: Expr a -> Expr a
+  Ln2            :: Expr a
+  Log10          :: Expr a -> Expr a
+  Log2           :: Expr a -> Expr a
+  Max            :: Expr a -> Expr a -> [Expr a] -> Expr a
+  Min            :: Expr a -> Expr a -> [Expr a] -> Expr a
+  Pi             :: Expr a
+  Sin            :: Expr a -> Expr a
+  Sqrt           :: Expr a -> Expr a
+  Tan            :: Expr a -> Expr a
+  Zoom           :: Expr a
   HeatmapDensity :: Expr a
 
 infix 4 .<
@@ -139,11 +139,11 @@ infix 7 .%
 
 instance (IsValue a, Num a) => Num (Expr a) where
   fromInteger = Lit . fromInteger
-  (+) = Plus
-  (-) = Minus
-  (*) = Mult
-  abs e = Case [ (e `LessThan` 0, negate e) ] e
-  signum e = Case [ (e `LessThan` 0, -1) ] 1
+  (+)         = Plus
+  (-)         = Minus
+  (*)         = Mult
+  abs    x    = Case [ (x .< 0, -x) ] x
+  signum x    = Case [ (x .< 0, -1) ] 1
 
 instance (IsValue a, Fractional a) => Fractional (Expr a) where
   fromRational = Lit . fromRational
@@ -263,11 +263,9 @@ instance Eq x => Eq (Expr x) where
 
 instance IsValue a => ToJSON (Expr a) where
   toJSON (Lit a) = toLiteral a
-
   toJSON (Array a Nothing) = op "array" a
   toJSON (Array a (Just (ArrayCheck t Nothing))) = op2 "array" t a
   toJSON (Array a (Just (ArrayCheck t (Just l)))) = op3 "array" t l a
-
   toJSON (Boolean       a as   ) = opArgs  "boolean"       a as
   toJSON (Number        a as   ) = opArgs  "number"        a as
   toJSON (Object        a as   ) = opArgs  "object"        a as
@@ -332,7 +330,8 @@ instance IsValue a => ToJSON (Expr a) where
   toJSON Zoom                    = constE  "zoom"
   toJSON HeatmapDensity          = constE  "heatmap-density"
 
-  toJSON (Case cases dflt) = toJSON (label "case": concatMap (\(c,v) -> [toJSON c, toJSON v]) cases <> [toJSON dflt])
+  toJSON (Case cases dflt) =
+    toJSON (label "case": concatMap (\(c,v) -> [toJSON c, toJSON v]) cases <> [toJSON dflt])
   toJSON (Match input cases dflt) =
     toJSON (label "match": toJSON input:concatMap (\(c,v) -> [toJSON c, toJSON v]) cases <> [toJSON dflt])
   toJSON (Interpolate type_ input cases) =
