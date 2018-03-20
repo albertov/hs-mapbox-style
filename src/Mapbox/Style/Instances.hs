@@ -129,7 +129,7 @@ boolean = scaledOneOf
   , Has <$> arbitrary <*> (arbitrary @(Maybe (Expr (StrMap Value))))
   , NotHas <$> arbitrary <*> (arbitrary @(Maybe (Expr (StrMap Value))))
   , Not <$> arbitrary
-  , NotEq <$> arbitrary @(Expr Value) <*> arbitrary
+  , NotEqual <$> arbitrary @(Expr Value) <*> arbitrary
   , LessThan <$> arbitrary @(Expr Value) <*> arbitrary
   , Equal <$> arbitrary @(Expr Value) <*> arbitrary
   , GreaterThan <$> arbitrary @(Expr Value) <*> arbitrary

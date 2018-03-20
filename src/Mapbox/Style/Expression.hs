@@ -24,6 +24,7 @@ module Mapbox.Style.Expression (
 , Number
 , mk1'
 , mk1
+, (.<), (.<=), (.==), (.!=), (.>), (.>=), (.%)
 ) where
 
 import Data.Aeson (Value, FromJSON(..), ToJSON(..), withText, withArray)
@@ -60,7 +61,7 @@ data Expr a where
   NotHas      :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
   Length :: IsValue b => Expr b -> Expr a
   Not    :: Expr Bool -> Expr Bool
-  NotEq    :: (Eq b, IsValue b) => Expr b -> Expr b -> Expr Bool
+  NotEqual    :: (Eq b, IsValue b) => Expr b -> Expr b -> Expr Bool
   LessThan :: IsValue b => Expr b -> Expr b -> Expr Bool
   LessThanEq :: IsValue b => Expr b -> Expr b -> Expr Bool
   Equal :: (Eq b, IsValue b) => Expr b -> Expr b -> Expr Bool
@@ -108,6 +109,68 @@ data Expr a where
   Zoom      :: Expr a
   HeatmapDensity :: Expr a
 
+infix 4 .<
+(.<) :: IsValue a => Expr a -> Expr a -> Expr Bool
+(.<) = LessThan
+
+infix 4 .<=
+(.<=) :: IsValue a => Expr a -> Expr a -> Expr Bool
+(.<=) = LessThanEq
+
+infix 4 .>
+(.>) :: IsValue a => Expr a -> Expr a -> Expr Bool
+(.>) = GreaterThan
+
+infix 4 .>=
+(.>=) :: IsValue a => Expr a -> Expr a -> Expr Bool
+(.>=) = GreaterThanEq
+
+infix 4 .==
+(.==) :: IsValue a => Expr a -> Expr a -> Expr Bool
+(.==) = Equal
+
+infix 4 .!=
+(.!=) :: IsValue a => Expr a -> Expr a -> Expr Bool
+(.!=) = NotEqual
+
+infix 7 .%
+(.%) :: IsValue a => Expr a -> Expr a -> Expr a
+(.%) = Mod
+
+
+instance (IsValue a, Num a) => Num (Expr a) where
+  fromInteger = Lit . fromInteger
+  (+) = Plus
+  (-) = Minus
+  (*) = Mult
+  abs e = Case [ (e `LessThan` 0, negate e) ] e
+  signum e = Case [ (e `LessThan` 0, -1) ] 1
+
+instance (IsValue a, Fractional a) => Fractional (Expr a) where
+  fromRational = Lit . fromRational
+  (/) = Div
+
+instance (Fractional a, IsValue a) => Floating (Expr a) where
+  pi = Pi
+  exp a = E ** a
+  log = Ln
+  sqrt = Sqrt
+  (**) = Pow
+  logBase b x = Log10 x / Log10 b
+  sin = Sin
+  cos = Cos
+  tan = Tan
+  asin = Asin
+  acos = Acos
+  atan = Atan
+  sinh x = (1 - E ** ((-2) * x)) / ((2 * E) ** (-x))
+  cosh x = (1 + E ** ((-2) * x)) / ((2 * E) ** (-x))
+  tanh x = (1 - E ** ((-2) * x)) / (1 + E ** ((-2) * x))
+  asinh x = log (x + sqrt (x*x+1))
+  acosh x = log (x + sqrt (x+1) * sqrt (x-1))
+  atanh x = (log (1+x) - log (1-x)) / 2
+
+
 type Bindings b = NonEmpty (Text, Expr b)
 
 deriving instance Show a => Show (Expr a)
@@ -138,7 +201,7 @@ instance Eq x => Eq (Expr x) where
   Length (a :: Expr a) == Length (a' :: Expr a')
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a'
   Not a == Not a' = a == a'
-  NotEq (a :: Expr a) b == NotEq (a' :: Expr a') b'
+  NotEqual (a :: Expr a) b == NotEqual (a' :: Expr a') b'
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
   In (a :: Expr a) b == In (a' :: Expr a') b'
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
@@ -227,7 +290,7 @@ instance IsValue a => ToJSON (Expr a) where
   toJSON (NotHas a Nothing     ) = op      "!has"          a
   toJSON (Length        a      ) = op      "length"        a
   toJSON (Not           a      ) = op      "!"             a
-  toJSON (NotEq         a b    ) = op2     "!="            a b
+  toJSON (NotEqual      a b    ) = op2     "!="            a b
   toJSON (LessThan      a b    ) = op2     "<"             a b
   toJSON (LessThanEq    a b    ) = op2     "<="            a b
   toJSON (Equal         a b    ) = op2     "=="            a b
@@ -628,7 +691,7 @@ parseBool o = parseExpr o
           <|> parseOp2                  "!has"       (\k (v :: Expr (StrMap Value)) -> NotHas k (Just v)) o
           <|> parseOp                   "!has"       (flip NotHas (Nothing :: Maybe (Expr (StrMap Value)))) o
           <|> parseOp                   "!"          Not o
-          <|> parseOp2 @(Expr Value)    "!="         NotEq o
+          <|> parseOp2 @(Expr Value)    "!="         NotEqual o
           <|> parseOp2 @(Expr Value)    "<"          LessThan o
           <|> parseOp2 @(Expr Value)    "<="         LessThanEq o
           <|> parseOp2 @(Expr Value)    "=="         Equal o
