@@ -57,6 +57,7 @@ data Expr a where
   At         :: Int -> Expr [a] -> Expr a
   Get         :: Text -> Maybe (Expr (StrMap a)) -> Expr a
   Has         :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
+  NotHas      :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
   Length :: IsValue b => Expr b -> Expr a
   Not    :: Expr Bool -> Expr Bool
   NotEq    :: (Eq b, IsValue b) => Expr b -> Expr b -> Expr Bool
@@ -68,6 +69,8 @@ data Expr a where
   All :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
   Any :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
   None :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+  In   :: IsValue b => Expr b -> [Expr b] -> Expr Bool
+  NotIn :: IsValue b => Expr b -> [Expr b] -> Expr Bool
   Case :: [(Expr Bool, Expr a)] -> Expr a -> Expr a
   Coalesce :: Expr a -> Expr a -> [Expr a] -> Expr a
   Match :: IsValue b => Expr b -> [(Expr b, Expr a)] -> Expr a -> Expr a
@@ -130,10 +133,16 @@ instance Eq x => Eq (Expr x) where
   Get a b == Get a' b' = a == a' && b == b'
   Has a (b :: Maybe (Expr (StrMap b))) == Has a' (b' :: Maybe (Expr (StrMap b')))
     | Just Refl <- (eqT :: Maybe (b :~: b')) = a == a' && b == b'
+  NotHas a (b :: Maybe (Expr (StrMap b))) == NotHas a' (b' :: Maybe (Expr (StrMap b')))
+    | Just Refl <- (eqT :: Maybe (b :~: b')) = a == a' && b == b'
   Length (a :: Expr a) == Length (a' :: Expr a')
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a'
   Not a == Not a' = a == a'
   NotEq (a :: Expr a) b == NotEq (a' :: Expr a') b'
+    | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
+  In (a :: Expr a) b == In (a' :: Expr a') b'
+    | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
+  NotIn (a :: Expr a) b == NotIn (a' :: Expr a') b'
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
   LessThan (a :: Expr a) b == LessThan (a' :: Expr a') b'
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
@@ -197,36 +206,71 @@ instance IsValue a => ToJSON (Expr a) where
   toJSON (Array a (Just (ArrayCheck t Nothing))) = op2 "array" t a
   toJSON (Array a (Just (ArrayCheck t (Just l)))) = op3 "array" t l a
 
-  toJSON (Boolean      a as) = opArgs "boolean"       a as
-  toJSON (Number       a as) = opArgs "number"        a as
-  toJSON (Object       a as) = opArgs "object"        a as
-  toJSON (String       a as) = opArgs "string"        a as
-  toJSON (ToBoolean    a   ) = op     "to-boolean"    a
-  toJSON (ToColor      a as) = opArgs "to-color"      a as
-  toJSON (ToNumber     a as) = opArgs "to-number"     a as
-  toJSON (ToString     a as) = opArgs "to-string"     a as
-  toJSON (TypeOf       a   ) = op     "typeof"        a
-  toJSON  GeometryType       = constE "geometry-type"
-  toJSON  Id                 = constE "id"
-  toJSON  Properties         = constE "properties"
-  toJSON (At           a b ) = op2    "at"            a b
-  toJSON (Get    a (Just b)) = op2    "get"           a b
-  toJSON (Get    a Nothing)  = op     "get"           a
-  toJSON (Has    a (Just b)) = op2    "has"           a b
-  toJSON (Has    a Nothing)  = op     "has"           a
-  toJSON (Length       a   ) = op     "length"        a
-  toJSON (Not          a   ) = op     "!"             a
-  toJSON (NotEq        a b ) = op2    "!="            a b
-  toJSON (LessThan     a b ) = op2    "<"             a b
-  toJSON (LessThanEq   a b ) = op2    "<="            a b
-  toJSON (Equal        a b ) = op2    "=="            a b
-  toJSON (GreaterThan   a b ) = op2    ">"             a b
-  toJSON (GreaterThanEq a b ) = op2    ">="            a b
-  toJSON (All           a b c) = op2Args    "all"      a b c
-  toJSON (Any           a b c) = op2Args    "any"      a b c
-  toJSON (None          a b c) = op2Args    "none"      a b c
+  toJSON (Boolean       a as   ) = opArgs  "boolean"       a as
+  toJSON (Number        a as   ) = opArgs  "number"        a as
+  toJSON (Object        a as   ) = opArgs  "object"        a as
+  toJSON (String        a as   ) = opArgs  "string"        a as
+  toJSON (ToBoolean     a      ) = op      "to-boolean"    a
+  toJSON (ToColor       a as   ) = opArgs  "to-color"      a as
+  toJSON (ToNumber      a as   ) = opArgs  "to-number"     a as
+  toJSON (ToString      a as   ) = opArgs  "to-string"     a as
+  toJSON (TypeOf        a      ) = op      "typeof"        a
+  toJSON  GeometryType           = constE  "geometry-type"
+  toJSON  Id                     = constE  "id"
+  toJSON  Properties             = constE  "properties"
+  toJSON (At            a b    ) = op2     "at"            a b
+  toJSON (Get    a (Just b)    ) = op2     "get"           a b
+  toJSON (Get    a Nothing     ) = op      "get"           a
+  toJSON (Has    a (Just b)    ) = op2     "has"           a b
+  toJSON (Has    a Nothing     ) = op      "has"           a
+  toJSON (NotHas a (Just b)    ) = op2     "!has"          a b
+  toJSON (NotHas a Nothing     ) = op      "!has"          a
+  toJSON (Length        a      ) = op      "length"        a
+  toJSON (Not           a      ) = op      "!"             a
+  toJSON (NotEq         a b    ) = op2     "!="            a b
+  toJSON (LessThan      a b    ) = op2     "<"             a b
+  toJSON (LessThanEq    a b    ) = op2     "<="            a b
+  toJSON (Equal         a b    ) = op2     "=="            a b
+  toJSON (GreaterThan   a b    ) = op2     ">"             a b
+  toJSON (GreaterThanEq a b    ) = op2     ">="            a b
+  toJSON (All           a b c  ) = op2Args "all"           a b c
+  toJSON (Any           a b c  ) = op2Args "any"           a b c
+  toJSON (In            a b    ) = opArgs  "in"            a b
+  toJSON (NotIn         a b    ) = opArgs  "!in"           a b
+  toJSON (None          a b c  ) = op2Args "none"          a b c
+  toJSON (Coalesce      a b c  ) = op2Args "coalesce"      a b c
+  toJSON (Var           a      ) = op      "var"           a
+  toJSON (Concat        a b c  ) = op2Args "concat"        a b c
+  toJSON (Downcase      a      ) = op      "downcase"      a
+  toJSON (Upcase        a      ) = op      "upcase"        a
+  toJSON (RGB           a b c  ) = op3     "rgb"           a b c
+  toJSON (RGBA          a b c d) = op4     "rgba"          a b c d
+  toJSON (ToRGBA        a      ) = op      "to-rgba"       a
+  toJSON (Minus         a b    ) = op2     "-"             a b
+  toJSON (Mult          a b    ) = op2     "*"             a b
+  toJSON (Div           a b    ) = op2     "/"             a b
+  toJSON (Mod           a b    ) = op2     "%"             a b
+  toJSON (Pow           a b    ) = op2     "^"             a b
+  toJSON (Plus          a b    ) = op2     "+"             a b
+  toJSON (Acos          a      ) = op      "acos"          a
+  toJSON (Asin          a      ) = op      "asin"          a
+  toJSON (Atan          a      ) = op      "atan"          a
+  toJSON (Cos           a      ) = op      "cos"           a
+  toJSON E                       = constE  "e"
+  toJSON (Ln            a      ) = op      "ln"            a
+  toJSON Ln2                     = constE  "ln2"
+  toJSON (Log10         a      ) = op      "log10"         a
+  toJSON (Log2          a      ) = op      "log2"          a
+  toJSON (Max           a b c  ) = op2Args "max"           a b c
+  toJSON (Min           a b c  ) = op2Args "min"           a b c
+  toJSON Pi                      = constE  "pi"
+  toJSON (Sin           a      ) = op      "sin"           a
+  toJSON (Sqrt          a      ) = op      "sqrt"          a
+  toJSON (Tan           a      ) = op      "tan"           a
+  toJSON Zoom                    = constE  "zoom"
+  toJSON HeatmapDensity          = constE  "heatmap-density"
+
   toJSON (Case cases dflt) = toJSON (label "case": concatMap (\(c,v) -> [toJSON c, toJSON v]) cases <> [toJSON dflt])
-  toJSON (Coalesce      a b c) = op2Args    "coalesce"      a b c
   toJSON (Match input cases dflt) =
     toJSON (label "match": toJSON input:concatMap (\(c,v) -> [toJSON c, toJSON v]) cases <> [toJSON dflt])
   toJSON (Interpolate type_ input cases) =
@@ -235,36 +279,6 @@ instance IsValue a => ToJSON (Expr a) where
     toJSON (label "step":toJSON input:toJSON out0:concatMap (\(c,v) -> [toJSON c, toJSON v]) cases)
   toJSON (Let bs x) =
     toJSON (label "let":concatMap (\(c,v) -> [toJSON c, toJSON v]) bs <> [toJSON  x])
-  toJSON (Var           a      ) = op         "var"         a
-  toJSON (Concat        a b c  ) = op2Args    "concat"      a b c
-  toJSON (Downcase      a      ) = op         "downcase"    a
-  toJSON (Upcase        a      ) = op         "upcase"      a
-  toJSON (RGB           a b c  ) = op3        "rgb"         a b c
-  toJSON (RGBA          a b c d) = op4        "rgba"        a b c d
-  toJSON (ToRGBA        a      ) = op         "to-rgba"     a
-  toJSON (Minus         a b    ) = op2        "-"           a b
-  toJSON (Mult          a b    ) = op2        "*"           a b
-  toJSON (Div           a b    ) = op2        "/"           a b
-  toJSON (Mod           a b    ) = op2        "%"           a b
-  toJSON (Pow           a b    ) = op2        "^"           a b
-  toJSON (Plus          a b    ) = op2        "+"           a b
-  toJSON (Acos          a      ) = op         "acos"        a
-  toJSON (Asin          a      ) = op         "asin"        a
-  toJSON (Atan          a      ) = op         "atan"        a
-  toJSON (Cos           a      ) = op         "cos"         a
-  toJSON E                       = constE     "e"
-  toJSON (Ln            a      ) = op         "ln"          a
-  toJSON Ln2                     = constE     "ln2"
-  toJSON (Log10         a      ) = op         "log10"       a
-  toJSON (Log2          a      ) = op         "log2"        a
-  toJSON (Max           a b c  ) = op2Args    "max"         a b c
-  toJSON (Min           a b c  ) = op2Args    "min"         a b c
-  toJSON Pi                      = constE     "pi"
-  toJSON (Sin           a      ) = op         "sin"         a
-  toJSON (Sqrt          a      ) = op         "sqrt"        a
-  toJSON (Tan           a      ) = op         "tan"         a
-  toJSON Zoom                    = constE     "zoom"
-  toJSON HeatmapDensity          = constE     "heatmap-density"
 
 
 instance FromJSON (Expr Value) where parseJSON = parseValue
@@ -403,8 +417,7 @@ instance FromJSON Interpolation where
 
 
 parseValue :: Value -> Parser (Expr Value)
-parseValue v = parseNumber v
-           <|> parseExpr v
+parseValue = parseExpr
 
 parseExpr :: (FromJSON (Expr a), IsValue a) => Value -> Parser (Expr a)
 parseExpr o = parseLit o
@@ -463,6 +476,11 @@ parseMatch = withArray "match expression" go
           =
            (do cases_ <- parsePairs cases
                dflt_ <- parseJSON dflt
+               input_ <- parseJSON @(Expr Bool) input
+               pure (Match input_ cases_ dflt_))
+          <|>
+           (do cases_ <- parsePairs cases
+               dflt_ <- parseJSON dflt
                input_ <- parseJSON @(Expr Text) input
                pure (Match input_ cases_ dflt_))
           <|>
@@ -485,14 +503,17 @@ parseLet = withArray "let expression" go
           , bs <- V.unsafeInit (V.unsafeTail xs)
           , expr <- V.unsafeLast xs
           =
+            (Let <$> (parseNEPairs bs :: Parser (Bindings Bool))
+                 <*> parseJSON expr)
+            <|>
             (Let <$> (parseNEPairs bs :: Parser (Bindings Number))
-                <*> parseJSON expr)
+                 <*> parseJSON expr)
             <|>
             (Let <$> (parseNEPairs bs :: Parser (Bindings Text))
-                <*> parseJSON expr)
+                 <*> parseJSON expr)
             <|>
             (Let <$> (parseNEPairs bs :: Parser (Bindings Value))
-                <*> parseJSON expr)
+                 <*> parseJSON expr)
     go _ = fail "invalid match expression"
 
 parseInterpolate
@@ -604,6 +625,8 @@ parseBool o = parseExpr o
           <|> parseOp @(Expr Value)     "to-boolean" ToBoolean o
           <|> parseOp2                  "has"        (\k (v :: Expr (StrMap Value)) -> Has k (Just v)) o
           <|> parseOp                   "has"        (flip Has (Nothing :: Maybe (Expr (StrMap Value)))) o
+          <|> parseOp2                  "!has"       (\k (v :: Expr (StrMap Value)) -> NotHas k (Just v)) o
+          <|> parseOp                   "!has"       (flip NotHas (Nothing :: Maybe (Expr (StrMap Value)))) o
           <|> parseOp                   "!"          Not o
           <|> parseOp2 @(Expr Value)    "!="         NotEq o
           <|> parseOp2 @(Expr Value)    "<"          LessThan o
@@ -614,6 +637,8 @@ parseBool o = parseExpr o
           <|> parseOp2Args              "all"        All o
           <|> parseOp2Args              "any"        Any o
           <|> parseOp2Args              "none"       None o
+          <|> parseOpArgs @(Expr Value) "in"         In o
+          <|> parseOpArgs @(Expr Value) "!in"        NotIn o
 
 parseWith :: (Text -> [Value] -> Parser a) -> Value -> Parser a
 parseWith go = withArray "expression" $ \a ->
@@ -710,73 +735,3 @@ parseOp4 tag f = parseWith go
     go tag' _
       | tag==tag'  = fail (toS ("expected four args for " <> tag))
       | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
-
-{-
-  | ArrayExp   Expr (Maybe ArrayCheck)
-  | BooleanExp Expr (Array Expr)
-  | LiteralExp (Either (StrMap Value) (Array Value))
-  | NumberExp   Expr (Array Expr)
-  | ObjectExp   Expr (Array Expr)
-  | StringExp   Expr (Array Expr)
-  | ToBoolean   Expr
-  | ToColor     Expr (Array Expr)
-  | ToNumber    Expr (Array Expr)
-  | ToString    Expr
-  | TypeOf      Expr
-  | GeometryType
-  | Id
-  | Properties
-  | At            Int Expr
-  | Get           String (Maybe Expr)
-  | Has           String (Maybe Expr)
-  | NotHas        String (Maybe Expr)
-  | Length        Expr
-  | Not           Expr
-  | NotEq         Expr Expr
-  | LessThan      Expr Expr
-  | LessThanEq    Expr Expr
-  | Equal         Expr Expr
-  | GreaterThan   Expr Expr
-  | GreaterThanEq Expr Expr
-  | None          Expr Expr (Array Expr)
-  | All           Expr Expr (Array Expr)
-  | Any           Expr Expr (Array Expr)
-  | In            Expr Expr (Array Expr) --Not defined in the spec but found in the wild
-  | NotIn         Expr Expr (Array Expr) --Not defined in the spec but found in the wild
-  | Case          (Array (Tuple Expr Expr)) Expr
-  | Coalesce      Expr Expr (Array Expr)
-  | Match         Expr (Array (Tuple (NonEmpty Array Expr) Expr)) Expr
-  | Interpolate   InterpolationType Expr (Array (Tuple Number Expr))
-  | Step          Expr Expr (Array (Tuple Number Expr))
-  | Let           (Array (Tuple String Expr)) Expr
-  | Var           String
-  | Concat        Expr Expr (Array Expr)
-  | Downcase      Expr
-  | Upcase        Expr
-  | Rgb           Expr Expr Expr
-  | Rgba          Expr Expr Expr Expr
-  | ToRgba        Expr
-  | Minus         Expr Expr
-  | Mult          Expr Expr
-  | Div           Expr Expr
-  | Mod           Expr Expr
-  | Exp           Expr Expr
-  | Plus          Expr Expr
-  | Acos          Expr
-  | Asin          Expr
-  | Atan          Expr
-  | Cos           Expr
-  | E
-  | Ln            Expr
-  | Ln2           Expr
-  | Log10         Expr
-  | Log2          Expr
-  | Max           Expr Expr (Array Expr)
-  | Min           Expr Expr (Array Expr)
-  | Pi
-  | Sin           Expr
-  | Sqrt          Expr
-  | Tan           Expr
-  | Zoom
-  | HeatmapDensity
--}

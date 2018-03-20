@@ -36,6 +36,7 @@ var = Var <$> arbitrary
 let_  :: (Arbitrary a, Arbitrary (Expr a)) => Gen (Expr a)
 let_ = oneof
   [ letWith (Proxy @Number)
+  , letWith (Proxy @Bool)
   , letWith (Proxy @Text)
   --, letWith (Proxy @Color)
   , letWith (Proxy @Value)
@@ -59,6 +60,7 @@ match_  :: (Arbitrary a, Arbitrary (Expr a)) => Gen (Expr a)
 match_ = oneof
   [ matchWith (Proxy @Number)
   , matchWith (Proxy @Text)
+  , matchWith (Proxy @Bool)
   , matchWith (Proxy @Value)
   ]
 
@@ -125,6 +127,7 @@ boolean = scaledOneOf
   [ Boolean <$> arbitrary <*> arbitrary
   , ToBoolean <$> arbitrary @(Expr Value)
   , Has <$> arbitrary <*> (arbitrary @(Maybe (Expr (StrMap Value))))
+  , NotHas <$> arbitrary <*> (arbitrary @(Maybe (Expr (StrMap Value))))
   , Not <$> arbitrary
   , NotEq <$> arbitrary @(Expr Value) <*> arbitrary
   , LessThan <$> arbitrary @(Expr Value) <*> arbitrary
@@ -134,6 +137,8 @@ boolean = scaledOneOf
   , All <$> arbitrary <*> arbitrary <*> arbitrary
   , Any <$> arbitrary <*> arbitrary <*> arbitrary
   , None <$> arbitrary <*> arbitrary <*> arbitrary
+  , In <$> arbitrary @(Expr Value) <*> arbitrary
+  , NotIn <$> arbitrary  @(Expr Value) <*> arbitrary
   , expr_
   ]
 
