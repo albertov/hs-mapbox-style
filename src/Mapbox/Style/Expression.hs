@@ -15,14 +15,8 @@ module Mapbox.Style.Expression (
 , ExprType (..)
 , ArrayCheck (..)
 , IsValue (..)
-, Color (..)
 , Interpolation (..)
-, StrMap
 , Bindings
-, UnitInterval
-, Number
-, mk1'
-, mk1
 , get
 , get'
 , at
@@ -58,14 +52,17 @@ module Mapbox.Style.Expression (
 , e_
 , ln2
 , (.<), (.<=), (.==), (.!=), (.>), (.>=), (.%)
+
+, parseExpr
 ) where
+
+import Mapbox.Style.Common (parsePairs, parseNEPairs)
+import Mapbox.Style.Types (Number, StrMap, UnitInterval, Color)
 
 import Data.Aeson (Value, FromJSON(..), ToJSON(..), withText, withArray)
 import Data.Aeson.Types (Parser)
-import Data.HashMap.Strict (HashMap)
 import Data.Semigroup (Semigroup)
 import qualified Data.Semigroup as SG
-import Data.Scientific
 import Data.Typeable
 import qualified Data.Aeson as Aeson
 import Data.String (IsString(fromString))
@@ -74,8 +71,6 @@ import Data.Word (Word8)
 import Protolude hiding (Any, All, all, any, get, concat, length)
 import Prelude (fail)
 
-
-type Number = Scientific
 
 data Expr a where
   Array          :: IsValue b => Expr b -> Maybe ArrayCheck -> Expr [a]
@@ -412,30 +407,14 @@ instance IsValue a => FromJSON (Expr [a]) where
 label :: Text -> Value
 label = Aeson.String
 
-newtype Color = Color Text
-  deriving (Show, Eq, Typeable, IsString, ToJSON, FromJSON, IsValue)
-
-newtype UnitInterval = UI Number
-  deriving (Show, Eq, Typeable, ToJSON, IsValue)
-
-mk1 :: Number -> Maybe UnitInterval
-mk1 v | 0<=v && v<=1 = Just (UI v)
-mk1 _ = Nothing
-
-mk1' :: Number -> UnitInterval
-mk1' = UI . max 0 . min 1
-
-instance FromJSON UnitInterval where
-  parseJSON = maybe (fail "value must be in range [0-1]") pure
-          <=< (fmap mk1 . parseJSON)
 
 data ExprType = StringT | NumberT | BooleanT
   deriving (Show, Eq, Typeable, Enum, Bounded)
 
 instance ToJSON ExprType where
-  toJSON StringT = Aeson.String "string"
-  toJSON NumberT = Aeson.String "number"
-  toJSON BooleanT = Aeson.String "boolean"
+  toJSON StringT = "string"
+  toJSON NumberT = "number"
+  toJSON BooleanT = "boolean"
 
 instance FromJSON ExprType where
   parseJSON = withText "expression type" $ \case
@@ -463,11 +442,13 @@ instance IsValue Value where
   fromLiteral o = fromLiteralArr o <|> parseJSON o
 
 instance IsValue Text
+instance IsValue Color
+instance IsValue UnitInterval
 instance IsValue Word8
 instance IsValue Number
 instance IsValue Bool
 
-instance IsValue a => IsValue (HashMap Text a) where
+instance IsValue a => IsValue (StrMap a) where
   toLiteral   = toLiteralArr
   fromLiteral = fromLiteralArr
 
@@ -494,7 +475,6 @@ instance IsValue a => IsValue [a] where
 data ArrayCheck = ArrayCheck ExprType (Maybe Int)
   deriving (Show, Eq, Typeable)
 
-type StrMap = HashMap Text
 
 
 
@@ -660,18 +640,6 @@ parseStep = withArray "step expression" go
             pure (Step input_ out0_ cases_)
     go _ = fail "invalid step expression"
 
-parseNEPairs
-  :: (FromJSON a, FromJSON b)
-  => V.Vector Value -> Parser (NonEmpty (a,b))
-parseNEPairs = maybe (fail "empty pairs") pure . nonEmpty
-           <=< parsePairs
-
-parsePairs
-  :: (FromJSON a, FromJSON b)
-  => V.Vector Value -> Parser [(a,b)]
-parsePairs xs | V.length xs `mod` 2 /= 0 = fail "Odd number of pairs"
-parsePairs xs = forM [0,2 .. V.length xs -1] $ \i ->
-  (,) <$> parseJSON (V.unsafeIndex xs i) <*> parseJSON (V.unsafeIndex xs (i+1))
 
 
 parseNumber :: (IsValue a, FromJSON (Expr a)) => Value -> Parser (Expr a)

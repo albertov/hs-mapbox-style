@@ -19,7 +19,10 @@ cabal-version:       >=1.10
 library
   exposed-modules:
     Mapbox.Style.Expression,
+    Mapbox.Style.Common
     Mapbox.Style.Instances
+    Mapbox.Style.Types
+    Mapbox.Style.Layer
   -- other-modules:       
   other-extensions:    GADTs
   build-depends:
