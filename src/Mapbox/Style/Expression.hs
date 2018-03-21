@@ -23,19 +23,57 @@ module Mapbox.Style.Expression (
 , Number
 , mk1'
 , mk1
+, get
+, get'
+, at
+, has
+, has'
+, notHas
+, notHas'
+, not_
+, in_
+, case_
+, step
+, match
+, notIn
+, interpolate
+, array'
+, array
+, zoom
+, heatmapDensity
+, rgb
+, rgba
+, toRgba
+, concat
+, downcase
+, upcase
+, all
+, any
+, none
+, length
+, coalesce
+, geometryType
+, id
+, properties
+, e_
+, ln2
 , (.<), (.<=), (.==), (.!=), (.>), (.>=), (.%)
 ) where
 
 import Data.Aeson (Value, FromJSON(..), ToJSON(..), withText, withArray)
 import Data.Aeson.Types (Parser)
 import Data.HashMap.Strict (HashMap)
+import Data.Semigroup (Semigroup)
+import qualified Data.Semigroup as SG
 import Data.Scientific
 import Data.Typeable
 import qualified Data.Aeson as Aeson
+import Data.String (IsString(fromString))
 import qualified Data.Vector as V
 import Data.Word (Word8)
-import Protolude hiding (Any, All)
+import Protolude hiding (Any, All, all, any, get, concat, length)
 import Prelude (fail)
+
 
 type Number = Scientific
 
@@ -136,6 +174,15 @@ infix 7 .%
 (.%) :: IsValue a => Expr a -> Expr a -> Expr a
 (.%) = Mod
 
+instance IsString (Expr Text) where
+  fromString = Lit . fromString
+
+instance Semigroup (Expr Text) where
+  a <> b = Concat a b []
+
+instance Monoid (Expr Text) where
+  mempty = Lit ""
+  mappend a b = Concat a b []
 
 instance (IsValue a, Num a) => Num (Expr a) where
   fromInteger = Lit . fromInteger
@@ -796,3 +843,109 @@ parseOp4 tag f = parseWith go
     go tag' _
       | tag==tag'  = fail (toS ("expected four args for " <> tag))
       | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
+
+
+
+
+
+array' :: IsValue b => Maybe ArrayCheck -> Expr b -> Expr [a]
+array' = flip Array
+
+array :: IsValue b => Expr b -> Expr [a]
+array = array' Nothing
+
+get :: Text -> Expr a
+get = flip Get Nothing
+
+get' :: Text -> Expr (StrMap a) -> Expr a
+get' k v = Get k (Just v)
+
+at :: Int -> Expr [a] -> Expr a
+at = At
+
+has :: Text -> Expr Bool
+has = flip Has (Nothing :: Maybe (Expr (StrMap Value)))
+
+has' :: IsValue a => Text -> Expr (StrMap a) -> Expr Bool
+has' k v = Has k (Just v)
+
+notHas :: Text -> Expr Bool
+notHas = flip NotHas (Nothing :: Maybe (Expr (StrMap Value)))
+
+notHas' :: IsValue a => Text -> Expr (StrMap a) -> Expr Bool
+notHas' k v = NotHas k (Just v)
+
+not_ :: Expr Bool -> Expr Bool
+not_ = Not
+
+in_ :: IsValue a => Expr a -> [Expr a] -> Expr Bool
+in_ = In
+
+notIn :: IsValue a => Expr a -> [Expr a] -> Expr Bool
+notIn = NotIn
+
+case_ :: Expr a -> [(Expr Bool, Expr a)] -> Expr a
+case_ = flip Case
+
+step :: Expr Number -> Expr a -> [(Expr Number, Expr a)] -> Expr a
+step = Step
+
+match :: IsValue b => Expr b -> [(Expr b, Expr a)] -> Expr a -> Expr a
+match = Match
+
+interpolate :: Interpolation -> Expr Number -> [(Expr Number, Expr a)] -> Expr a
+interpolate = Interpolate
+
+zoom :: Expr a
+zoom = Zoom
+
+heatmapDensity :: Expr a
+heatmapDensity = HeatmapDensity
+
+rgb :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
+rgb = RGB
+
+rgba :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr UnitInterval -> Expr Color
+rgba = RGBA
+
+toRgba :: Expr Color -> Expr [a]
+toRgba = ToRGBA
+
+concat :: Expr Text -> Expr Text -> [Expr Text] -> Expr Text
+concat = Concat
+
+downcase :: Expr Text -> Expr Text
+downcase = Downcase
+
+upcase :: Expr Text -> Expr Text
+upcase = Upcase
+
+all :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+all = All
+
+any :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+any = Any
+
+none :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+none = None
+
+length :: IsValue b => Expr b -> Expr a
+length = Length
+
+coalesce :: Expr a -> Expr a -> [Expr a] -> Expr a
+coalesce = Coalesce
+
+geometryType :: Expr Text
+geometryType = GeometryType
+
+id :: Expr a
+id = Id
+
+properties :: Expr (StrMap a)
+properties = Properties
+
+e_ :: Expr a
+e_ = E
+
+ln2 :: Expr a
+ln2 = Ln2

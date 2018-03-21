@@ -11,7 +11,10 @@ import qualified Data.Aeson as Aeson
 import Data.Aeson (Value)
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
-import Mapbox.Style.Expression
+import Mapbox.Style.Expression (
+    Expr(..), IsValue, UnitInterval, StrMap, Color(..)
+  , Interpolation(..), ArrayCheck(..), Number, Bindings
+  , ExprType, mk1')
 import Data.List (words)
 import Protolude hiding (Any, All, get)
 
