@@ -18,11 +18,14 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-    Mapbox.Style.Expression,
-    Mapbox.Style.Common
+    Mapbox.Style
+    Mapbox.Style.Expression
     Mapbox.Style.Instances
     Mapbox.Style.Types
     Mapbox.Style.Layer
+    Mapbox.Style.Source
+    Mapbox.Style.Common
+    Mapbox.Style.TileJSON
   -- other-modules:       
   other-extensions:    GADTs
   build-depends:
@@ -34,6 +37,7 @@ library
     quickcheck-instances,
     scientific,
     unordered-containers,
+    text,
     vector
   hs-source-dirs:      src
   default-language:    Haskell2010
