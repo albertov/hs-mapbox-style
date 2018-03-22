@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DuplicateRecordFields #-}
@@ -16,14 +17,55 @@
 module Mapbox.Style.Layer (
   Anchor (..)
 , Layer (..)
+, Transition (..)
+, Transitionable (..)
+, Pixels
+, Ems
+, Factor
+, Degrees
+, SourceRef (..)
+, SpriteRef (..)
+, Property (..)
+, ZoomStop (..)
+, PropStop (..)
+, ZoomPropStop (..)
+, Stops (..)
+, ColorSpace (..)
+, Visibility (..)
+, LineCap (..)
+, LineJoin (..)
+, Padding
+, Translate
+, Offset
+, XY (..)
+, SymbolPlacement (..)
+, Alignment (..)
+, TextFit (..)
+, Justify (..)
+, BoxAnchor (..)
+, TextTransform (..)
+, FontList (..)
+, DashArray (..)
+
+, background
+, fill
+, line
+, symbol
+, raster
+, circle
+, fillExtrusion
+, heatmap
+, hillshade
 ) where
 
 import Mapbox.Style.Common (failT, prop)
 import Mapbox.Style.Expression (Expr, IsValue, parseExpr)
 import Mapbox.Style.Types
 import Data.Aeson
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Pair, Parser)
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
+import GHC.Exts (IsList(..))
 import Protolude hiding (filter,join)
 
 
@@ -75,7 +117,7 @@ data Layer
     , gapWidth  :: Maybe (Transitionable (Property Pixels))
     , lineOffset  :: Maybe (Transitionable (Property Pixels))
     , blur  :: Maybe (Transitionable (Property Number))
-    , dashArray  :: Maybe (Transitionable (Property [Number]))
+    , dashArray  :: Maybe (Transitionable (Property DashArray))
     , pattern     :: Maybe (Transitionable (Property SpriteRef))
     }
   | Symbol
@@ -107,7 +149,7 @@ data Layer
     , textPitchAlignment :: Maybe (Property Alignment)
     , textRotationAlignment :: Maybe (Property Alignment)
     , textField             :: Maybe (Property Text)
-    , textFont             :: Maybe (Property [Text])
+    , textFont             :: Maybe (Property FontList)
     , textSize             :: Maybe (Property Pixels)
     , textMaxWidth             :: Maybe (Property Ems)
     , textLineHeight             :: Maybe (Property Ems)
@@ -138,7 +180,7 @@ data Layer
     , textTranslate       :: Maybe (Transitionable (Property (XY Translate)))
     , textTranslateAnchor         :: Maybe (Property Anchor)
     }
-  | Raster
+  | RasterLayer
     { id          :: Text
     , visibility  :: Maybe (Property Visibility)
     , metadata    :: Maybe (StrMap Value)
@@ -226,7 +268,245 @@ data Layer
     }
   deriving (Eq, Show)
 
+background :: Text -> Layer
+background id = Background
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
 
+  , color       = Nothing
+  , pattern     = Nothing
+  , opacity     = Nothing
+  }
+
+fill :: Text -> SourceRef -> Layer
+fill id source = Fill
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , antialias   = Nothing
+  , opacity     = Nothing
+  , color       = Nothing
+  }
+
+line :: Text -> SourceRef -> Layer
+line id source = Line
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , cap         = Nothing
+  , join        = Nothing
+  , miterLimit  = Nothing
+  , roundLimit  = Nothing
+  , opacity     = Nothing
+  , color       = Nothing
+  , translate   = Nothing
+  , translateAnchor = Nothing
+  , width  = Nothing
+  , gapWidth  = Nothing
+  , lineOffset  = Nothing
+  , blur  = Nothing
+  , dashArray  = Nothing
+  , pattern     = Nothing
+  }
+
+symbol :: Text -> SourceRef -> Layer
+symbol id source = Symbol
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , symPlacement    = Nothing
+  , symSpacing      = Nothing
+  , symAvoidEdges   = Nothing
+  , iconAllowOverlap = Nothing
+  , iconIgnorePlacement = Nothing
+  , iconOptional        = Nothing
+  , iconRotationAlignment = Nothing
+  , iconSize              = Nothing
+  , iconTextFit           = Nothing
+  , iconTextFitPadding    = Nothing
+  , iconImage             = Nothing
+  , iconRotate            = Nothing
+  , iconPadding          = Nothing
+  , iconKeepUpright     = Nothing
+  , iconOffset          = Nothing
+  , iconAnchor          = Nothing
+  , iconPitchAlignment = Nothing
+  , textPitchAlignment = Nothing
+  , textRotationAlignment = Nothing
+  , textField             = Nothing
+  , textFont             = Nothing
+  , textSize             = Nothing
+  , textMaxWidth         = Nothing
+  , textLineHeight       = Nothing
+  , textLetterSpacing    = Nothing
+  , textJustify          = Nothing
+  , textAnchor           = Nothing
+  , textMaxAngle         = Nothing
+  , textRotate           = Nothing
+  , textPadding          = Nothing
+  , textKeepUpright      = Nothing
+  , textTransform        = Nothing
+  , textOffset         = Nothing
+  , textAllowOverlap     = Nothing
+  , textIgnorePlacement  = Nothing
+  , textOptional         = Nothing
+  , iconOpacity     = Nothing
+  , iconColor       = Nothing
+  , iconHaloColor       = Nothing
+  , iconHaloWidth       = Nothing
+  , iconHaloBlur       = Nothing
+  , iconTranslate       = Nothing
+  , iconTranslateAnchor = Nothing
+  , textOpacity = Nothing
+  , textColor     = Nothing
+  , textHaloColor   = Nothing
+  , textHaloWidth    = Nothing
+  , textHaloBlur      = Nothing
+  , textTranslate      = Nothing
+  , textTranslateAnchor  = Nothing
+  }
+
+raster :: Text -> SourceRef -> Layer
+raster id source = RasterLayer
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+  , opacity     = Nothing
+  , hueRotate     = Nothing
+  , brightnessMin  = Nothing
+  , brightnessMax  = Nothing
+  , saturation     = Nothing
+  , contrast     = Nothing
+  , fadeDuration  = Nothing
+  }
+
+circle :: Text -> SourceRef -> Layer
+circle id source = Circle
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , radius     = Nothing
+  , color     = Nothing
+  , blur     = Nothing
+  , opacity     = Nothing
+  , translate       = Nothing
+  , translateAnchor  = Nothing
+  , pitchScale      = Nothing
+  , pitchAlignment  = Nothing
+  , strokeWidth     = Nothing
+  , strokeColor     = Nothing
+  , strokeOpacity   = Nothing
+  }
+
+fillExtrusion :: Text -> SourceRef -> Layer
+fillExtrusion id source = FillExtrusion
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , opacity     = Nothing
+  , color     = Nothing
+  , translate     = Nothing
+  , translateAnchor = Nothing
+  , pattern   = Nothing
+  , height    = Nothing
+  , base    = Nothing
+  }
+
+heatmap :: Text -> SourceRef -> Layer
+heatmap id source = Heatmap
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , radius     = Nothing
+  , weight     = Nothing
+  , intensity   = Nothing
+  , hmColor   = Nothing
+  , opacity     = Nothing
+  }
+
+hillshade :: Text -> SourceRef -> Layer
+hillshade id source = Hillshade
+  { id
+  , visibility  = Nothing
+  , metadata    = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , filter      = Nothing
+  , source
+
+  , illuminationDirection = Nothing
+  , illuminationAnchor = Nothing
+  , exageration     = Nothing
+  , shadowColor     = Nothing
+  , highlightColor     = Nothing
+  , accentColor     = Nothing
+  }
+
+instance ToJSON Layer where
+  toJSON (Background {..}) = object $ catMaybes
+    [ Just ("id" .= id), Just ("type","background")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , Just ("layout" .= object (catMaybes
+      [ prop "visibility" visibility
+      ]))
+    , Just ("paint" .= object (concat
+      [ transProp "background-color" color
+      , transProp "background-pattern" pattern
+      , transProp "background-opacity" opacity
+      ]))
+    ]
+
+transProp
+  :: IsValue o
+  => Text -> Maybe (Transitionable (Property o))
+  -> [Pair]
+transProp _ Nothing = []
+transProp t (Just (Transitionable o Nothing)) = [t .= toJSON o]
+transProp t (Just (Transitionable o (Just tr))) =
+  [ t .= o
+  , (t <> "-transition") .= tr
+  ]
 
 instance FromJSON Layer where
   parseJSON = withObject "layer" $ \m -> do
@@ -331,7 +611,7 @@ instance FromJSON Layer where
         saturation <- getTransitionableProp paint "raster-saturation"
         contrast <- getTransitionableProp paint "raster-contrast"
         fadeDuration <- getProp paint "raster-fade-duration"
-        pure Raster {..}
+        pure RasterLayer {..}
       "circle" -> do
         source <- decodeSourceRef m
         radius <- getTransitionableProp paint "circle-radius"
@@ -395,6 +675,30 @@ instance FromJSON Layer where
         Just v  -> Just <$> (Transitionable <$> pure v <*> o .:? (p<>"-transition"))
         Nothing -> pure Nothing
 
+instance {-# OVERLAPS #-} FromJSON [Layer] where
+  parseJSON = mapM parseJSON <=< derefLayers <=< parseJSON
+
+derefLayers :: [Value] -> Parser [Value]
+derefLayers ls = do
+  byId <- HM.fromList <$> forM ls (withObject "layer" $ \o ->
+      (,) <$> o .: "id" <*> pure o)
+  mapM (deref byId) ls
+  where
+    deref :: HM.HashMap Text Object -> Value -> Parser Value
+    deref byId = withObject "layer" $ \layer -> do
+      mRef <- layer .:? "ref"
+      case mRef of
+        Just ref -> do
+          parent <- maybe (failT ("invalid ref:" <> ref))
+                    pure
+                    (ref `HM.lookup` byId)
+          let pProps = HM.fromList (catMaybes (map getProp refProps))
+              getProp k = (,) <$> pure k <*> (k `HM.lookup` parent)
+          pure $ Object (HM.filter (/="ref") layer <> pProps)
+        Nothing -> pure (Object layer)
+
+    refProps = [ "type", "source", "source-layer", "minzoom", "maxzoom"
+               , "filter", "layout"];
 
 
 
@@ -416,6 +720,24 @@ instance FromJSON Anchor where
     "viewport" -> pure Viewport
     "map"      -> pure Map
     other      -> failT ("Unexpected anchor: " <> other)
+
+newtype DashArray = DashArray [Number]
+  deriving (Eq, Show, ToJSON, FromJSON)
+
+instance IsList DashArray where
+  type Item DashArray = Number
+  toList (DashArray x) = x
+  fromList = DashArray . fromList
+  fromListN n = DashArray . fromListN n
+
+newtype FontList = FontList [Text]
+  deriving (Eq, Show, ToJSON, FromJSON)
+
+instance IsList FontList where
+  type Item FontList = Text
+  toList (FontList x) = x
+  fromList = FontList . fromList
+  fromListN n = FontList . fromListN n
 
 data SourceRef
   = SourceRef Text
@@ -629,16 +951,16 @@ instance FromJSON ColorSpace where
     "hcl" -> pure HclSpace
     o -> failT ("Invalid color space: " <> o)
 
-data Visibility = None | Visible
+data Visibility = NotVisible | Visible
   deriving (Eq, Show, Enum, Bounded)
 
 instance ToJSON Visibility where
-  toJSON None = "none"
+  toJSON NotVisible = "none"
   toJSON Visible = "visible"
 
 instance FromJSON Visibility where
   parseJSON = withText "visibility" $ \case
-    "none" -> pure None
+    "none" -> pure NotVisible
     "visible" -> pure Visible
     other -> failT ("Invalid visibility: " <> other)
 
@@ -826,6 +1148,8 @@ instance FromJSON (Expr TextFit) where parseJSON = parseExpr
 instance FromJSON (Expr BoxAnchor) where parseJSON = parseExpr
 instance FromJSON (Expr Justify) where parseJSON = parseExpr
 instance FromJSON (Expr TextTransform) where parseJSON = parseExpr
+instance FromJSON (Expr FontList) where parseJSON = parseExpr
+instance FromJSON (Expr DashArray) where parseJSON = parseExpr
 
 instance IsValue Visibility
 instance IsValue SpriteRef
@@ -839,3 +1163,5 @@ instance IsValue TextFit
 instance IsValue BoxAnchor
 instance IsValue Justify
 instance IsValue TextTransform
+instance IsValue FontList
+instance IsValue DashArray

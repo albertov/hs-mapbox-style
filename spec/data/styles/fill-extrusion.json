@@ -1,0 +1,37 @@
+{
+  "version": 8,
+  "name": "Basic",
+  "metadata": {
+      "mapbox:autocomposite": true
+  },
+  "sources": {
+      "mapbox": {
+          "url": "mapbox://mapbox.mapbox-streets-v7",
+          "type": "vector"
+      }
+  },
+  "sprite": "mapbox://sprites/mapbox/basic-v8",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "room-extrusion",
+      "type": "fill-extrusion",
+      "source": "mapbox",
+      "paint": {
+          "fill-extrusion-color": {
+              "property": "color",
+              "type": "identity"
+          },
+          "fill-extrusion-height": {
+              "property": "height",
+              "type": "identity"
+          },
+          "fill-extrusion-base": {
+              "property": "base_height",
+              "type": "identity"
+          },
+          "fill-extrusion-opacity": 0.5
+      }
+    }
+  ]
+}

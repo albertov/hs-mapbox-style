@@ -33,24 +33,19 @@ module Mapbox.Style.Expression (
 , interpolate
 , array'
 , array
-, zoom
-, heatmapDensity
 , rgb
 , rgba
 , toRgba
-, concat
 , downcase
 , upcase
-, all
-, any
+, all_
+, concat_
+, any_
 , none
-, length
+, length_
 , coalesce
 , geometryType
-, id
 , properties
-, e_
-, ln2
 , (.<), (.<=), (.==), (.!=), (.>), (.>=), (.%)
 
 , parseExpr
@@ -864,12 +859,6 @@ match = Match
 interpolate :: Interpolation -> Expr Number -> [(Expr Number, Expr a)] -> Expr a
 interpolate = Interpolate
 
-zoom :: Expr a
-zoom = Zoom
-
-heatmapDensity :: Expr a
-heatmapDensity = HeatmapDensity
-
 rgb :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
 rgb = RGB
 
@@ -879,8 +868,8 @@ rgba = RGBA
 toRgba :: Expr Color -> Expr [a]
 toRgba = ToRGBA
 
-concat :: Expr Text -> Expr Text -> [Expr Text] -> Expr Text
-concat = Concat
+concat_ :: Expr Text -> Expr Text -> [Expr Text] -> Expr Text
+concat_ = Concat
 
 downcase :: Expr Text -> Expr Text
 downcase = Downcase
@@ -888,17 +877,17 @@ downcase = Downcase
 upcase :: Expr Text -> Expr Text
 upcase = Upcase
 
-all :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-all = All
+all_ :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+all_ = All
 
-any :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-any = Any
+any_ :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+any_ = Any
 
 none :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
 none = None
 
-length :: IsValue b => Expr b -> Expr a
-length = Length
+length_ :: IsValue b => Expr b -> Expr a
+length_ = Length
 
 coalesce :: Expr a -> Expr a -> [Expr a] -> Expr a
 coalesce = Coalesce
@@ -906,14 +895,5 @@ coalesce = Coalesce
 geometryType :: Expr Text
 geometryType = GeometryType
 
-id :: Expr a
-id = Id
-
 properties :: Expr (StrMap a)
 properties = Properties
-
-e_ :: Expr a
-e_ = E
-
-ln2 :: Expr a
-ln2 = Ln2

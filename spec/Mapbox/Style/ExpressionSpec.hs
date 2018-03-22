@@ -5,7 +5,8 @@ module Mapbox.Style.ExpressionSpec where
 import qualified Data.Aeson as Aeson
 import Data.Proxy (Proxy(..))
 import Mapbox.TestUtil
-import Mapbox.Style.Expression
+import Mapbox.Style.Expression (Expr, Interpolation)
+import Mapbox.Style.Types (Number, Color)
 import Mapbox.Style.Instances ()
 import Data.Text (Text)
 import Data.Typeable (Typeable, typeOf)

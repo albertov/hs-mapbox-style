@@ -71,11 +71,11 @@ instance FromJSON Bounds where
     [w,s,e,n] -> pure (Bounds {southwest=LonLat {lon=w,lat=s}, northeast=LonLat {lon=e,lat=n}})
     _         -> fail "invalid Bounds"
 
-data LonLatZoom = LonLatZoom { lonLat :: !LonLat, zoom :: !Zoom }
+data LonLatZoom = LonLatZoom !LonLat !Zoom
   deriving (Eq, Show)
 
 instance ToJSON LonLatZoom where
-    toJSON (LonLatZoom {lonLat=LonLat{lon,lat},zoom}) = toJSON [lon, lat, zoom]
+    toJSON (LonLatZoom (LonLat{lon,lat}) zoom) = toJSON [lon, lat, zoom]
 
 instance FromJSON LonLatZoom where
     parseJSON = parseJSON >=> \case

@@ -51,12 +51,16 @@ test-suite spec
     aeson,
     hspec,
     hspec-core,
+    Glob,
     text,
+    bytestring,
+    protolude,
     QuickCheck
   hs-source-dirs:   spec
   main-is:          Main.hs
   other-modules:
     Mapbox.Style.ExpressionSpec
+    Mapbox.StyleSpec
     Mapbox.TestUtil
   ghc-options:
     -Wall
