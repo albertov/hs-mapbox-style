@@ -19,16 +19,13 @@
       "source": "mapbox",
       "paint": {
           "fill-extrusion-color": {
-              "property": "color",
-              "type": "identity"
+              "property": "color"
           },
           "fill-extrusion-height": {
-              "property": "height",
-              "type": "identity"
+              "property": "height"
           },
           "fill-extrusion-base": {
-              "property": "base_height",
-              "type": "identity"
+              "property": "base_height"
           },
           "fill-extrusion-opacity": 0.5
       }

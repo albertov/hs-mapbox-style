@@ -54,6 +54,7 @@ test-suite spec
     Glob,
     text,
     bytestring,
+    unordered-containers,
     protolude,
     QuickCheck
   hs-source-dirs:   spec

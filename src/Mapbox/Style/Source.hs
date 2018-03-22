@@ -18,9 +18,9 @@ import Protolude
 import Prelude (fail)
 
 data Source
-  = Vector    VectorSource
-  | Raster    RasterSource
-  | RasterDEM RasterSource
+  = Vector    (Either URI TileJSON)
+  | Raster    (Either URI TileJSON) (Maybe TileSize)
+  | RasterDEM (Either URI TileJSON) (Maybe TileSize)
   | GeoJSON
     { data_ :: Either URI GeoJSONData
     , maxzoom :: Maybe Zoom
@@ -45,16 +45,6 @@ data Source
     }
   deriving (Eq, Show)
 
-data VectorSource
-  = VectorUrl URI
-  | VectorSource TileJSON
-  deriving (Eq, Show)
-
-data RasterSource
-  = RasterUrl URI
-  | RasterSource TileJSON (Maybe TileSize)
-  deriving (Eq, Show)
-
 data ImageCoordinates = ImageCoordinates
   { topLeft :: LonLat
   , topRight :: LonLat
@@ -75,14 +65,16 @@ type GeoJSONData = Value
 type TileSize = Int
 
 instance ToJSON Source where
-  toJSON (Vector (VectorUrl v)) = typed "vector" ["url".=v]
-  toJSON (Vector (VectorSource v)) = injectType "vector" (toJSON v)
-  toJSON (Raster (RasterUrl v)) = typed "raster" ["url".=v]
-  toJSON (Raster (RasterSource v ts)) =
+  toJSON (Vector (Left v)) = object [("type","vector"), "url".=v]
+  toJSON (Vector (Right v)) = injectType "vector" (toJSON v)
+  toJSON (Raster (Left v) ts) =
+    object (catMaybes [Just ("type","raster"), Just ("url".=v),prop "tileSize" ts])
+  toJSON (Raster (Right v) ts) =
     injectPairs (catMaybes [Just ("type","raster"), prop "tileSize" ts]) (toJSON v)
-  toJSON (RasterDEM (RasterUrl v)) = typed "raster-dem" ["url".=v]
-  toJSON (RasterDEM (RasterSource v ts)) =
-    injectPairs (catMaybes [Just ("type","raster-dem"), prop "tileSize" ts]) (toJSON v)
+  toJSON (RasterDEM (Left v) ts) =
+    object (catMaybes [Just ("type","raster-dem"), Just ("url".=v),prop "tileSize" ts])
+  toJSON (RasterDEM (Right v) ts) =
+    injectPairs (catMaybes [Just ("type","raster.dem"), prop "tileSize" ts]) (toJSON v)
   toJSON GeoJSON {..} = object $ catMaybes
     [ Just ("type", "geojson")
     , Just ("data", either toJSON toJSON data_)
@@ -110,21 +102,18 @@ injectPairs ps (Object o) = Object (foldr (uncurry HM.insert) o ps)
 injectPairs _  o          = o
 
 
-typed :: Text -> [Pair] -> Value
-typed ty = object . (("type".=ty):)
-
 instance FromJSON Source where
   parseJSON v = parseJSON v >>= \o -> do
     ty :: Text <- o .: "type"
     case ty of
       "vector" -> Vector <$>
-        (VectorUrl <$> o .: "url" <|> VectorSource <$> parseJSON v)
-      "raster" -> Raster <$> do
-        ts <- o .:? "tileSize"
-        (RasterUrl <$> o .: "url" <|> RasterSource <$> parseJSON v <*> pure ts)
-      "raster-dem" -> Raster <$> do
-        ts <- o .:? "tileSize"
-        (RasterUrl <$> o .: "url" <|> RasterSource <$> parseJSON v <*> pure ts)
+        (Left <$> o .: "url" <|> Right <$> parseJSON v)
+      "raster" ->
+        Raster <$> (Left <$> o .: "url" <|> Right <$> parseJSON v)
+               <*> o .:? "tileSize"
+      "raster-dem" ->
+        RasterDEM <$> (Left <$> o .: "url" <|> Right <$> parseJSON v)
+                  <*> o .:? "tileSize"
       "geojson" -> do
         data_ <- Left <$> o .: "data" <|> Right <$> o .: "data"
         maxzoom <- o .:? "maxzoom"

@@ -14,6 +14,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Mapbox.Style.Layer (
   Anchor (..)
 , Layer (..)
@@ -24,7 +25,9 @@ module Mapbox.Style.Layer (
 , Factor
 , Degrees
 , SourceRef (..)
-, SpriteRef (..)
+, SpriteId (..)
+, SpriteMap
+, Sprite (..)
 , Property (..)
 , ZoomStop (..)
 , PropStop (..)
@@ -56,12 +59,15 @@ module Mapbox.Style.Layer (
 , fillExtrusion
 , heatmap
 , hillshade
+
+, derefLayers
 ) where
 
 import Mapbox.Style.Common (failT, prop)
 import Mapbox.Style.Expression (Expr, IsValue, parseExpr)
 import Mapbox.Style.Types
 import Data.Aeson
+import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (Pair, Parser)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
@@ -73,19 +79,21 @@ import Protolude hiding (filter,join)
 data Layer
   = Background
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
 
     , color       :: Maybe (Transitionable (Property Color))
-    , pattern     :: Maybe (Transitionable (Property SpriteRef))
+    , pattern     :: Maybe (Transitionable (Property SpriteId))
     , opacity     :: Maybe (Transitionable (Property UnitInterval))
     }
   | Fill
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -95,10 +103,15 @@ data Layer
     , antialias   :: Maybe (Property Bool)
     , opacity     :: Maybe (Transitionable (Property UnitInterval))
     , color       :: Maybe (Transitionable (Property Color))
+    , outlineColor:: Maybe (Transitionable (Property Color))
+    , translate   :: Maybe (Transitionable (Property (XY Translate)))
+    , translateAnchor :: Maybe (Property Anchor)
+    , pattern     :: Maybe (Transitionable (Property SpriteId))
     }
   | Line
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -118,11 +131,12 @@ data Layer
     , lineOffset  :: Maybe (Transitionable (Property Pixels))
     , blur  :: Maybe (Transitionable (Property Number))
     , dashArray  :: Maybe (Transitionable (Property DashArray))
-    , pattern     :: Maybe (Transitionable (Property SpriteRef))
+    , pattern     :: Maybe (Transitionable (Property SpriteId))
     }
   | Symbol
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -139,7 +153,7 @@ data Layer
     , iconSize              :: Maybe (Property Factor)
     , iconTextFit           :: Maybe (Property TextFit)
     , iconTextFitPadding    :: Maybe (Property (XY Padding))
-    , iconImage             :: Maybe (Property SpriteRef)
+    , iconImage             :: Maybe (Property SpriteId)
     , iconRotate            :: Maybe (Property Degrees)
     , iconPadding          :: Maybe (Property Pixels)
     , iconKeepUpright     :: Maybe (Property Bool)
@@ -182,7 +196,8 @@ data Layer
     }
   | RasterLayer
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -199,7 +214,8 @@ data Layer
     }
   | Circle
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -220,7 +236,8 @@ data Layer
     }
   | FillExtrusion
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -231,13 +248,14 @@ data Layer
     , color     :: Maybe (Transitionable (Property Color))
     , translate       :: Maybe (Transitionable (Property (XY Translate)))
     , translateAnchor         :: Maybe (Property Anchor)
-    , pattern     :: Maybe (Transitionable (Property SpriteRef))
+    , pattern     :: Maybe (Transitionable (Property SpriteId))
     , height     :: Maybe (Transitionable (Property Number))
     , base     :: Maybe (Transitionable (Property Number))
     }
   | Heatmap
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -252,7 +270,8 @@ data Layer
     }
   | Hillshade
     { id          :: Text
-    , visibility  :: Maybe (Property Visibility)
+    , visibility  :: Maybe Visibility
+    , interactive :: Maybe Bool
     , metadata    :: Maybe (StrMap Value)
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
@@ -272,6 +291,7 @@ background :: Text -> Layer
 background id = Background
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -286,21 +306,27 @@ fill :: Text -> SourceRef -> Layer
 fill id source = Fill
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
   , filter      = Nothing
   , source
 
-  , antialias   = Nothing
-  , opacity     = Nothing
-  , color       = Nothing
+  , antialias       = Nothing
+  , opacity         = Nothing
+  , color           = Nothing
+  , outlineColor    = Nothing
+  , translate       = Nothing
+  , translateAnchor = Nothing
+  , pattern         = Nothing
   }
 
 line :: Text -> SourceRef -> Layer
 line id source = Line
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -327,6 +353,7 @@ symbol :: Text -> SourceRef -> Layer
 symbol id source = Symbol
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -389,6 +416,7 @@ raster :: Text -> SourceRef -> Layer
 raster id source = RasterLayer
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -407,6 +435,7 @@ circle :: Text -> SourceRef -> Layer
 circle id source = Circle
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -430,6 +459,7 @@ fillExtrusion :: Text -> SourceRef -> Layer
 fillExtrusion id source = FillExtrusion
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -449,6 +479,7 @@ heatmap :: Text -> SourceRef -> Layer
 heatmap id source = Heatmap
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -466,6 +497,7 @@ hillshade :: Text -> SourceRef -> Layer
 hillshade id source = Hillshade
   { id
   , visibility  = Nothing
+  , interactive = Nothing
   , metadata    = Nothing
   , minzoom     = Nothing
   , maxzoom     = Nothing
@@ -480,6 +512,16 @@ hillshade id source = Hillshade
   , accentColor     = Nothing
   }
 
+mapProp :: Text -> [[Pair]] -> Maybe Pair
+mapProp k pss = case concat pss of
+  [] -> Nothing
+  ps -> Just (k .= object ps)
+
+paintProps, layoutProps :: [[Pair]] -> Maybe Pair
+paintProps = mapProp "paint"
+layoutProps = mapProp "layout"
+
+
 instance ToJSON Layer where
   toJSON (Background {..}) = object $ catMaybes
     [ Just ("id" .= id), Just ("type","background")
@@ -487,22 +529,240 @@ instance ToJSON Layer where
     , prop "minzoom" minzoom
     , prop "maxzoom" maxzoom
     , prop "filter" filter
-    , Just ("layout" .= object (catMaybes
-      [ prop "visibility" visibility
-      ]))
-    , Just ("paint" .= object (concat
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
       [ transProp "background-color" color
       , transProp "background-pattern" pattern
       , transProp "background-opacity" opacity
-      ]))
+      ]
     ]
+  toJSON (Fill {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","fill")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
+      [ transProp "fill-color" color
+      , propL "fill-antialias" antialias
+      , transProp "fill-opacity" opacity
+      , transProp "fill-outline-color" outlineColor
+      , transProp "fill-translate" translate
+      , propL     "fill-translate-anchor" translateAnchor
+      , transProp "fill-pattern" pattern
+      ]
+    ]
+  toJSON (Line {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","line")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      , propL "line-cap" cap
+      , propL "line-join" join
+      , propL "line-miter-limit" miterLimit
+      , propL "line-round-limit" roundLimit
+      ]
+    , paintProps
+      [ transProp "line-opacity" opacity
+      , transProp "line-color" color
+      , transProp "line-translate" translate
+      , propL     "line-translate-anchor" translateAnchor
+      , transProp "line-width" width
+      , transProp "line-gap-width" gapWidth
+      , transProp "line-offset" lineOffset
+      , transProp "line-blur" blur
+      , transProp "line-dasharray" dashArray
+      , transProp "line-pattern" pattern
+      ]
+    ]
+  toJSON (Symbol {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","symbol")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL     "visibility" visibility
+      , propL     "symbol-placement" symPlacement
+      , propL     "symbol-spacing" symSpacing
+      , propL     "symbol-avoid-edges" symAvoidEdges
+      , propL     "icon-allow-overlap" iconAllowOverlap
+      , propL     "icon-ignore-placement" iconIgnorePlacement
+      , propL     "icon-optional" iconOptional
+      , propL     "icon-rotation-alignment" iconRotationAlignment
+      , propL     "icon-size" iconSize
+      , propL     "icon-text-fit" iconTextFit
+      , propL     "icon-text-fit-padding" iconTextFitPadding
+      , propL     "icon-image" iconImage
+      , propL     "icon-rotate" iconRotate
+      , propL     "icon-padding" iconPadding
+      , propL     "icon-keep-upright" iconKeepUpright
+      , propL     "icon-offset" iconOffset
+      , propL     "icon-anchor" iconAnchor
+      , propL     "icon-pitch-alignment" iconPitchAlignment
+      , propL     "text-pitch-alignment" textPitchAlignment
+      , propL     "text-rotation-alignment" textRotationAlignment
+      , propL     "text-field" textField
+      , propL     "text-font" textFont
+      , propL     "text-size" textSize
+      , propL     "text-max-width" textMaxWidth
+      , propL     "text-line-height" textLineHeight
+      , propL     "text-letter-spacing" textLetterSpacing
+      , propL     "text-justify" textJustify
+      , propL     "text-anchor" textAnchor
+      , propL     "text-max-angle" textMaxAngle
+      , propL     "text-rotate" textRotate
+      , propL     "text-padding" textPadding
+      , propL     "text-keep-upright" textKeepUpright
+      , propL     "text-transform" textTransform
+      , propL     "text-offset" textOffset
+      , propL     "text-allow-overlap" textAllowOverlap
+      , propL     "text-ignore-placement" textIgnorePlacement
+      , propL     "text-optional" textOptional
+      ]
+    , paintProps
+      [ transProp "icon-opacity" iconOpacity
+      , transProp "icon-color" iconColor
+      , transProp "icon-halo-color" iconHaloColor
+      , transProp "icon-halo-width" iconHaloWidth
+      , transProp "icon-halo-blur" iconHaloBlur
+      , transProp "icon-translate" iconTranslate
+      , propL     "icon-translate-anchor" iconTranslateAnchor
+      , transProp "text-opacity" textOpacity
+      , transProp "text-color" textColor
+      , transProp "text-halo-color" textHaloColor
+      , transProp "text-halo-width" textHaloWidth
+      , transProp "text-halo-blur" textHaloBlur
+      , transProp "text-translate" textTranslate
+      , propL     "text-translate-anchor" textTranslateAnchor
+      ]
+    ]
+  toJSON (RasterLayer {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","raster")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
+      [ transProp "raster-opacity" opacity
+      , transProp "raster-hue-rotate" hueRotate
+      , transProp "raster-brightness-min" brightnessMin
+      , transProp "raster-brightness-max" brightnessMax
+      , transProp "raster-saturation" saturation
+      , transProp "raster-contrast" contrast
+      , propL     "raster-fade-duration" fadeDuration
+      ]
+    ]
+  toJSON (Circle {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","circle")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
+      [ transProp "circle-radius" radius
+      , transProp "circle-color" color
+      , transProp "circle-blur" blur
+      , transProp "circle-opacity" opacity
+      , transProp "circle-translate" translate
+      , propL     "circle-translate-anchor" translateAnchor
+      , propL     "circle-pitch-scale" pitchScale
+      , propL     "circle-pitch-alignment" pitchAlignment
+      , transProp "circle-stroke-width" strokeWidth
+      , transProp "circle-stroke-color" strokeColor
+      , transProp "circle-stroke-opacity" strokeOpacity
+      ]
+    ]
+  toJSON (FillExtrusion {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","fill-extrusion")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
+      [ transProp "fill-extrusion-opacity" opacity
+      , transProp "fill-extrusion-color" color
+      , transProp "fill-extrusion-translate" translate
+      , propL     "fill-translate-anchor" translateAnchor
+      , transProp "fill-extrusion-pattern" pattern
+      , transProp "fill-extrusion-height" height
+      , transProp "fill-extrusion-base" base
+      ]
+    ]
+  toJSON (Heatmap {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","heatmap")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
+      [ transProp "heatmap-radius" radius
+      , transProp "heatmap-weight" weight
+      , transProp "heatmap-intensity" intensity
+      , propL     "heatmap-color" hmColor
+      , transProp "heatmap-opacity" opacity
+      ]
+    ]
+  toJSON (Hillshade {..}) = object $ sourceRefPairs source <> catMaybes
+    [ Just ("id" .= id), Just ("type","hillshade")
+    , prop "metadata" metadata
+    , prop "minzoom" minzoom
+    , prop "maxzoom" maxzoom
+    , prop "filter" filter
+    , prop "interactive" interactive
+    , layoutProps
+      [ propL "visibility" visibility
+      ]
+    , paintProps
+      [ propL     "hillshade-illumination-direction" illuminationDirection
+      , propL     "hillshade-illumination-anchor" illuminationAnchor
+      , transProp "hillshade-exaggeration" exageration
+      , transProp "hillshade-shadow-color" shadowColor
+      , transProp "hillshade-hightlight-color" highlightColor
+      , transProp "hillshade-accent-color" accentColor
+      ]
+    ]
+
+propL
+  :: ToJSON o
+  => Text -> Maybe o
+  -> [Pair]
+propL t = maybeToList . fmap (t.=)
 
 transProp
   :: IsValue o
   => Text -> Maybe (Transitionable (Property o))
   -> [Pair]
 transProp _ Nothing = []
-transProp t (Just (Transitionable o Nothing)) = [t .= toJSON o]
+transProp t (Just (Transitionable o Nothing)) = [t .= o]
 transProp t (Just (Transitionable o (Just tr))) =
   [ t .= o
   , (t <> "-transition") .= tr
@@ -515,6 +775,7 @@ instance FromJSON Layer where
     minzoom <- m .:? "minzoom"
     maxzoom <- m .:? "maxzoom"
     filter <- m .:? "filter"
+    interactive <- m .:? "interactive"
 
     paint <- m .:? "paint" .!= mempty
     layout <- m .:? "layout" .!= mempty
@@ -531,6 +792,10 @@ instance FromJSON Layer where
         antialias <- getProp paint "fill-antialias"
         opacity <- getTransitionableProp paint  "fill-opacity"
         color <- getTransitionableProp paint "fill-color"
+        outlineColor <- getTransitionableProp paint "fill-outline-color"
+        translate <- getTransitionableProp paint "fill-translate"
+        translateAnchor <- getProp paint "fill-translate-anchor"
+        pattern <- getTransitionableProp paint "fill-pattern"
         pure (Fill{..})
       "line" -> do
         source <- decodeSourceRef m
@@ -574,7 +839,7 @@ instance FromJSON Layer where
         textFont <- getProp layout "text-font"
         textSize <- getProp layout "text-size"
         textMaxWidth <- getProp layout "text-max-width"
-        textLineHeight <- getProp layout "text-max-height"
+        textLineHeight <- getProp layout "text-line-height"
         textLetterSpacing <- getProp layout "text-letter-spacing"
         textJustify <- getProp layout "text-justify"
         textAnchor <- getProp layout "text-anchor"
@@ -656,14 +921,6 @@ instance FromJSON Layer where
       unknown -> failT ("Unknown layer type: " <> unknown)
 
     where
-    decodeSourceRef
-      :: Object -> Parser SourceRef
-    decodeSourceRef o = do
-      source <- o .: "source"
-      sourceLayer <- o .:? "sourceLayer"
-      case sourceLayer of
-        Just sl -> pure (VectorSourceRef source sl)
-        Nothing -> pure (SourceRef source)
 
     getProp :: FromJSON a => Object -> Text -> Parser (Maybe a)
     getProp = (.:?)
@@ -674,6 +931,19 @@ instance FromJSON Layer where
       case mv of
         Just v  -> Just <$> (Transitionable <$> pure v <*> o .:? (p<>"-transition"))
         Nothing -> pure Nothing
+
+decodeSourceRef
+  :: Object -> Parser SourceRef
+decodeSourceRef o = do
+  source <- o .: "source"
+  sourceLayer <- o .:? "source-layer"
+  case sourceLayer of
+    Just sl -> pure (VectorSourceRef source sl)
+    Nothing -> pure (SourceRef source)
+
+sourceRefPairs :: SourceRef -> [Pair]
+sourceRefPairs (VectorSourceRef s l) = ["source".=s, "source-layer".=l]
+sourceRefPairs (SourceRef s) = ["source".=s]
 
 instance {-# OVERLAPS #-} FromJSON [Layer] where
   parseJSON = mapM parseJSON <=< derefLayers <=< parseJSON
@@ -694,7 +964,7 @@ derefLayers ls = do
                     (ref `HM.lookup` byId)
           let pProps = HM.fromList (catMaybes (map getProp refProps))
               getProp k = (,) <$> pure k <*> (k `HM.lookup` parent)
-          pure $ Object (HM.filter (/="ref") layer <> pProps)
+          pure $ Object (HM.filterWithKey (const . (/="ref")) layer <> pProps)
         Nothing -> pure (Object layer)
 
     refProps = [ "type", "source", "source-layer", "minzoom", "maxzoom"
@@ -744,7 +1014,18 @@ data SourceRef
   | VectorSourceRef Text Text
   deriving (Eq, Show)
 
-newtype SpriteRef = SpriteRef Text
+data Sprite = Sprite
+  { width      :: Int
+  , height     :: Int
+  , x          :: Int
+  , y          :: Int
+  , pixelRatio :: Double
+  } deriving (Eq, Show)
+
+type SpriteMap = HM.HashMap SpriteId Sprite
+
+
+newtype SpriteId = SpriteId Text
   deriving (Eq, Show, ToJSON, FromJSON, IsString)
 
 data Transitionable o = Transitionable o (Maybe Transition)
@@ -774,6 +1055,7 @@ data Property o
     { base     :: Maybe Number
     , default_ :: Maybe (Expr o)
     , property :: Maybe Text
+    , idStops  :: Maybe (Stops o)
     , colorSpace :: Maybe ColorSpace
     }
   | ExponentialFun
@@ -796,9 +1078,9 @@ data Property o
     }
   deriving (Eq, Show)
 
-instance FromJSON (Expr o) => FromJSON (Property o) where
-  parseJSON v = Prop <$> parseJSON v
-        <|> withObject "function" parseFun v
+instance (FromJSON o, FromJSON (Expr o)) => FromJSON (Property o) where
+  parseJSON v = withObject "function" parseFun v
+            <|> Prop <$> parseJSON v
     where
     parseFun o = do
       type_ <- o .:? "type" .!= ("identity" :: Text)
@@ -808,7 +1090,8 @@ instance FromJSON (Expr o) => FromJSON (Property o) where
       case type_ of
         "identity" -> do
           property <- o .:? "property"
-          pure (IdentityFun {base,property,default_,colorSpace})
+          idStops <- Just <$> decodeStops o <|> pure (Nothing :: Maybe (Stops o))
+          pure (IdentityFun {base,property,default_,colorSpace,idStops})
         "exponential" -> do
           stops <- decodeStops o
           pure (ExponentialFun {stops,base,default_,colorSpace})
@@ -853,21 +1136,22 @@ instance IsValue o =>  ToJSON (Property o) where
       , prop "colorSpace" colorSpace
       , prop "property" (stopsProperty stops)
       ]
-    IdentityFun {property,base,default_,colorSpace} -> object $ catMaybes
-      [ Just ("type","identity")
-      , prop "base" base
+    IdentityFun {property,base,default_,colorSpace,idStops} -> object $ catMaybes
+      [ -- Just ("type","identity") default type is "identity"
+        prop "base" base
+      , prop "stops" idStops
       , prop "default" default_
       , prop "colorSpace" colorSpace
       , prop "property" property
       ]
 
-data ZoomStop o = ZoomStop Zoom (Expr o)
+data ZoomStop o = ZoomStop Zoom o
   deriving (Eq, Show)
 
-instance ToJSON (Expr o) => ToJSON (ZoomStop o) where
+instance ToJSON o => ToJSON (ZoomStop o) where
   toJSON (ZoomStop z e) = toJSON [toJSON z, toJSON e]
 
-instance FromJSON (Expr o) => FromJSON (ZoomStop o) where
+instance FromJSON o => FromJSON (ZoomStop o) where
   parseJSON = withArray "ZoomStop" $ \a ->
     case V.toList a of
       [z, e] -> ZoomStop <$> parseJSON z <*> parseJSON e
@@ -875,7 +1159,7 @@ instance FromJSON (Expr o) => FromJSON (ZoomStop o) where
 
 
 data PropStop o where
-  PropStop :: IsValue b => b -> Expr o -> PropStop o
+  PropStop :: IsValue b => b -> o -> PropStop o
 
 instance Eq o => Eq (PropStop o) where
   PropStop (a::a) b == PropStop (a'::a') b'
@@ -887,7 +1171,7 @@ deriving instance Show o => Show (PropStop o)
 instance IsValue o => ToJSON (PropStop o) where
   toJSON (PropStop z e) = toJSON [toJSON z, toJSON e]
 
-instance FromJSON (Expr o) => FromJSON (PropStop o) where
+instance FromJSON o => FromJSON (PropStop o) where
   parseJSON = withArray "PropStop" $ \a ->
     case V.toList a of
       [z, e] -> PropStop <$> parseJSON @Number z <*> parseJSON e
@@ -897,7 +1181,7 @@ instance FromJSON (Expr o) => FromJSON (PropStop o) where
 
 
 data ZoomPropStop o where
-  ZoomPropStop :: IsValue b => Zoom -> b -> Expr o -> ZoomPropStop o
+  ZoomPropStop :: IsValue b => Zoom -> b -> o -> ZoomPropStop o
 
 instance Eq o => Eq (ZoomPropStop o) where
   ZoomPropStop a (b::b) c == ZoomPropStop a' (b'::b') c'
@@ -909,7 +1193,7 @@ deriving instance Show o => Show (ZoomPropStop o)
 instance IsValue o => ToJSON (ZoomPropStop o) where
   toJSON (ZoomPropStop z v e) = toJSON [object [ "zoom" .=  z, "value" .= v], toJSON e]
 
-instance FromJSON (Expr o) => FromJSON (ZoomPropStop o) where
+instance FromJSON o => FromJSON (ZoomPropStop o) where
   parseJSON = withArray "ZoomPropStop" $ \a ->
     case V.toList a of
       [z, e] -> do
@@ -1137,7 +1421,7 @@ instance FromJSON TextTransform where
 
 
 instance FromJSON (Expr Visibility) where parseJSON = parseExpr
-instance FromJSON (Expr SpriteRef) where parseJSON = parseExpr
+instance FromJSON (Expr SpriteId) where parseJSON = parseExpr
 instance FromJSON (Expr LineCap) where parseJSON = parseExpr
 instance FromJSON (Expr LineJoin) where parseJSON = parseExpr
 instance FromJSON (Expr Anchor) where parseJSON = parseExpr
@@ -1152,7 +1436,7 @@ instance FromJSON (Expr FontList) where parseJSON = parseExpr
 instance FromJSON (Expr DashArray) where parseJSON = parseExpr
 
 instance IsValue Visibility
-instance IsValue SpriteRef
+instance IsValue SpriteId
 instance IsValue LineCap
 instance IsValue LineJoin
 instance IsValue Anchor
@@ -1165,3 +1449,5 @@ instance IsValue Justify
 instance IsValue TextTransform
 instance IsValue FontList
 instance IsValue DashArray
+
+$(deriveJSON defaultOptions ''Sprite)
