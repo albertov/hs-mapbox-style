@@ -137,7 +137,7 @@ instance ToJSON Source where
   toJSON (RasterDEM (Left v) ts) =
     object (catMaybes [Just ("type","raster-dem"), Just ("url".=v),prop "tileSize" ts])
   toJSON (RasterDEM (Right v) ts) =
-    injectPairs (catMaybes [Just ("type","raster.dem"), prop "tileSize" ts]) (toJSON v)
+    injectPairs (catMaybes [Just ("type","raster-dem"), prop "tileSize" ts]) (toJSON v)
   toJSON GeoJSON {..} = object $ catMaybes
     [ Just ("type", "geojson")
     , Just ("data", either toJSON toJSON data_)
