@@ -54,7 +54,7 @@ module Mapbox.Style.Layer (
 , fill
 , line
 , symbol
-, raster
+, rasterLayer
 , circle
 , fillExtrusion
 , heatmap
@@ -412,8 +412,8 @@ symbol id source = Symbol
   , textTranslateAnchor  = Nothing
   }
 
-raster :: Text -> SourceRef -> Layer
-raster id source = RasterLayer
+rasterLayer :: Text -> SourceRef -> Layer
+rasterLayer id source = RasterLayer
   { id
   , visibility  = Nothing
   , interactive = Nothing

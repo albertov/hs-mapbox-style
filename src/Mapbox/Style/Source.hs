@@ -4,7 +4,23 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
-module Mapbox.Style.Source where
+module Mapbox.Style.Source (
+  Source (..)
+, ImageCoordinates (..)
+, ElementId
+, GeoJSONData
+, TileSize
+, vector
+, vectorInline
+, raster
+, rasterInline
+, rasterDEM
+, rasterDEMInline
+, geoJSON
+, image
+, video
+, canvas
+) where
 
 import Mapbox.Style.Common (prop)
 import Mapbox.Style.Types (URI, Zoom, Number, LonLat)
@@ -18,9 +34,17 @@ import Protolude
 import Prelude (fail)
 
 data Source
-  = Vector    (Either URI TileJSON)
-  | Raster    (Either URI TileJSON) (Maybe TileSize)
-  | RasterDEM (Either URI TileJSON) (Maybe TileSize)
+  = Vector
+    { ref :: Either URI TileJSON
+    }
+  | Raster
+    { ref :: Either URI TileJSON
+    , tileSize :: Maybe TileSize
+    }
+  | RasterDEM
+    { ref :: Either URI TileJSON
+    , tileSize :: Maybe TileSize
+    }
   | GeoJSON
     { data_ :: Either URI GeoJSONData
     , maxzoom :: Maybe Zoom
@@ -39,11 +63,50 @@ data Source
     , coordinates :: ImageCoordinates
     }
   | Canvas
-    { canvas      :: ElementId
+    { element     :: ElementId
     , coordinates :: ImageCoordinates
     , animate     :: Maybe Bool
     }
   deriving (Eq, Show)
+
+vector :: URI -> Source
+vector = Vector . Left
+
+vectorInline :: TileJSON -> Source
+vectorInline = Vector . Right
+
+raster :: URI -> Source
+raster = flip Raster Nothing . Left
+
+rasterInline :: TileJSON -> Source
+rasterInline = flip Raster Nothing . Right
+
+rasterDEM :: URI -> Source
+rasterDEM = flip RasterDEM Nothing . Left
+
+rasterDEMInline :: TileJSON -> Source
+rasterDEMInline = flip RasterDEM Nothing . Right
+
+geoJSON :: URI -> Source
+geoJSON uri = GeoJSON
+  { data_ = Left uri
+  , maxzoom = Nothing
+  , buffer = Nothing
+  , tolerance  = Nothing
+  , cluster = Nothing
+  , clusterRadius = Nothing
+  , clusterMaxZoom = Nothing
+  }
+
+image :: URI -> ImageCoordinates -> Source
+image = Image
+
+video :: URI -> ImageCoordinates -> Source
+video u = Video (pure u)
+
+canvas :: ElementId -> ImageCoordinates -> Source
+canvas ei cs = Canvas ei cs Nothing
+
 
 data ImageCoordinates = ImageCoordinates
   { topLeft :: LonLat
@@ -89,7 +152,7 @@ instance ToJSON Source where
   toJSON Video{..} = object [("type", "video"), "urls".=urls, "coordinates".=coordinates]
   toJSON Canvas{..} = object $ catMaybes
     [ Just ("type", "canvas")
-    , Just ("canvas".=canvas)
+    , Just ("canvas".=element)
     , Just ("coordinates".=coordinates)
     , prop "animate" animate
     ]
