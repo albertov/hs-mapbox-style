@@ -5,7 +5,8 @@ module Mapbox.TestUtil (
 , laxJsonProp
 ) where
 
-import           Data.Aeson (ToJSON, FromJSON, encode, eitherDecode)
+import           Data.Aeson (ToJSON(..), FromJSON, fromJSON, encode, eitherDecode)
+import           Data.Aeson.Types as AT (Result)
 import           Data.Typeable 
 import           Test.Hspec.QuickCheck
 import           Test.Hspec.Core.Spec
@@ -42,9 +43,9 @@ laxJsonProp
   => p a
   -> SpecWith ()
 laxJsonProp _ =
-  prop ("encode decoded = encoded (" ++ show (typeOf (undefined :: a)) ++ ")") $
+  prop ("toJSON decoded = encoded (" ++ show (typeOf (undefined :: a)) ++ ")") $
   \(a :: a) ->
-    let encoded = encode a
-        decoded = eitherDecode encoded :: Either String a
-    in counterexample (show (encoded, fmap encode decoded)) $
-       fmap encode decoded `shouldBe` Right encoded
+    let encoded = toJSON a
+        decoded = fromJSON encoded :: AT.Result a
+    in counterexample (show (encoded, fmap toJSON decoded)) $
+       fmap toJSON decoded `shouldBe` pure encoded

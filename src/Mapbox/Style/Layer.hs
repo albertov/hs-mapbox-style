@@ -749,7 +749,7 @@ instance ToJSON v => ToJSON (Layer v) where
       , propL     "hillshade-illumination-anchor" illuminationAnchor
       , transProp "hillshade-exaggeration" exageration
       , transProp "hillshade-shadow-color" shadowColor
-      , transProp "hillshade-hightlight-color" highlightColor
+      , transProp "hillshade-highlight-color" highlightColor
       , transProp "hillshade-accent-color" accentColor
       ]
     ]

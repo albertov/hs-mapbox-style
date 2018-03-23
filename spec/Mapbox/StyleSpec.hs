@@ -36,7 +36,8 @@ instance FromJSON RawStyle where
   parseJSON = withObject "raw style" $ \o -> do
     ls <- derefLayers . map normalizeLayerKeys =<< o .: "layers"
     let o' = HM.filterWithKey (const . (`notElem` ignoreRootKeys)) o
-        ignoreRootKeys = ["id", "created", "modified", "owner", "draft"]
+        ignoreRootKeys =
+          ["id", "created", "modified", "owner", "draft", "visibility"]
     pure $ RS $ Data.Aeson.Object $ HM.insert "layers" (toJSON ls) o'
 
 -- Removes spurious keys some styles keep in the layer objects
