@@ -133,10 +133,15 @@ type TileSize = Int
 instance ToJSON v => ToJSON (Source v) where
   toJSON (Vector (Left v)) = object [("type","vector"), "url".=v]
   toJSON (Vector (Right v)) = injectType "vector" (toJSON v)
-  toJSON (Raster (Left v) ts) =
-    object (catMaybes [Just ("type","raster"), Just ("url".=v),prop "tileSize" ts])
-  toJSON (Raster (Right v) ts) =
-    injectPairs (catMaybes [Just ("type","raster"), prop "tileSize" ts]) (toJSON v)
+  toJSON (Raster (Left v) ts) = object (catMaybes
+    [ Just ("type","raster")
+    , Just ("url".=v)
+    , prop "tileSize" ts
+    ])
+  toJSON (Raster (Right v) ts) = injectPairs (catMaybes
+    [ Just ("type","raster")
+    , prop "tileSize" ts
+    ]) (toJSON v)
   toJSON (RasterDEM (Left v) ts enc) = object (catMaybes
     [ Just ("type","raster-dem")
     , Just ("url".=v)
