@@ -50,6 +50,9 @@ module Mapbox.Style.Expression (
 , (.<), (.<=), (.==), (.!=), (.>), (.>=), (.%)
 
 , parseExpr
+, parseArray
+, fromLiteralArr
+, toLiteralArr
 ) where
 
 import Mapbox.Style.Common (parsePairs, parseNEPairs)
@@ -69,7 +72,7 @@ import Prelude (fail)
 
 
 data Expr a where
-  Array          :: IsValue b => Expr b -> Maybe ArrayCheck -> Expr [a]
+  Array          :: IsValue b => Expr b -> Maybe ArrayCheck -> Expr a
   Boolean        :: Expr Value -> [Expr Value] -> Expr Bool
   Lit            :: a -> Expr a
   Number         :: Expr Value -> [Expr Value] -> Expr a
@@ -112,7 +115,7 @@ data Expr a where
   Upcase         :: Expr Text -> Expr Text
   RGB            :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
   RGBA           :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Number -> Expr Color
-  ToRGBA         :: Expr Color -> Expr [a]
+  ToRGBA         :: Expr Color -> Expr a
   Minus          :: Expr a -> Expr a -> Expr a
   Mult           :: Expr a -> Expr a -> Expr a
   Div            :: Expr a -> Expr a -> Expr a
@@ -387,16 +390,19 @@ instance IsValue o => FromJSON (Expr (StrMap o)) where parseJSON = parseObject
 instance FromJSON (Expr Text) where parseJSON = parseString
 instance FromJSON (Expr Color) where parseJSON = parseColor
 instance FromJSON (Expr Bool) where parseJSON = parseBool
-instance IsValue a => FromJSON (Expr [a]) where
-  parseJSON o = parseWith go o
-            <|> parseInterpolate o
-            <|> parseExpr o
-    where
-    go "array" [e] = Array <$> parseJSON @(Expr Value) e <*> pure Nothing
-    go "array" [t, e] = Array <$> parseJSON @(Expr Value) e <*> (Just <$> (ArrayCheck <$> parseJSON t <*> pure Nothing))
-    go "array" [t, l, e] = Array <$> parseJSON @(Expr Value) e <*> (Just <$> (ArrayCheck <$> parseJSON t <*> (Just <$> parseJSON l)))
-    go "to-rgba" [c] = ToRGBA <$> parseJSON c
-    go other _ = fail (toS ("Unknown expression type" <> other))
+instance IsValue a => FromJSON (Expr [a]) where parseJSON = parseArray
+
+
+parseArray :: (IsValue a, FromJSON (Expr a)) => Value -> Parser (Expr a)
+parseArray o = parseWith go o
+          <|> parseInterpolate o
+          <|> parseExpr o
+  where
+  go "array" [e] = Array <$> parseJSON @(Expr Value) e <*> pure Nothing
+  go "array" [t, e] = Array <$> parseJSON @(Expr Value) e <*> (Just <$> (ArrayCheck <$> parseJSON t <*> pure Nothing))
+  go "array" [t, l, e] = Array <$> parseJSON @(Expr Value) e <*> (Just <$> (ArrayCheck <$> parseJSON t <*> (Just <$> parseJSON l)))
+  go "to-rgba" [c] = ToRGBA <$> parseJSON c
+  go other _ = fail (toS ("Unknown expression type" <> other))
 
 
 label :: Text -> Value
@@ -499,11 +505,10 @@ instance FromJSON Interpolation where
 
 
 parseValue :: Value -> Parser (Expr Value)
-parseValue = parseExpr
+parseValue o = parseArray o <|> parseExpr o
 
 parseExpr :: (FromJSON (Expr a), IsValue a) => Value -> Parser (Expr a)
-parseExpr o = parseLit o
-          <|> parseGet o
+parseExpr o = parseGet o
           <|> parseId o
           <|> parseCase o
           <|> parseAt o
@@ -512,6 +517,7 @@ parseExpr o = parseLit o
           <|> parseStep o
           <|> parseLet o
           <|> parseVar o
+          <|> parseLit o
 
 parseCoalesce :: (FromJSON (Expr a), IsValue a) => Value -> Parser (Expr a)
 parseCoalesce = parseOp2Args "coalesce" Coalesce

@@ -66,7 +66,9 @@ module Mapbox.Style.Layer (
 ) where
 
 import Mapbox.Style.Common (failT, prop)
-import Mapbox.Style.Expression (Expr, IsValue, parseExpr)
+import Mapbox.Style.Expression ( Expr(Lit), IsValue(..), parseExpr, parseArray
+                               , fromLiteralArr, toLiteralArr
+                               )
 import Mapbox.Style.Types
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
@@ -1124,6 +1126,7 @@ instance (FromJSON o, FromJSON (Expr o)) => FromJSON (Property o) where
 
 instance IsValue o =>  ToJSON (Property o) where
   toJSON = \case
+    P (Lit l) -> toJSON l -- Top level literals dont' need to be wrapped in "literal"
     P e -> toJSON e
     ExponentialFun {stops,base,default_,colorSpace} -> object $ catMaybes
       [ Just ("type","exponential")
@@ -1459,16 +1462,16 @@ instance FromJSON (Expr SpriteId) where parseJSON = parseExpr
 instance FromJSON (Expr LineCap) where parseJSON = parseExpr
 instance FromJSON (Expr LineJoin) where parseJSON = parseExpr
 instance FromJSON (Expr Anchor) where parseJSON = parseExpr
-instance FromJSON (Expr Padding) where parseJSON = parseExpr
-instance Typeable a => FromJSON (Expr (XY a)) where parseJSON = parseExpr
+instance FromJSON (Expr Padding) where parseJSON = parseArray
+instance Typeable a => FromJSON (Expr (XY a)) where parseJSON = parseArray
 instance FromJSON (Expr SymbolPlacement) where parseJSON = parseExpr
 instance FromJSON (Expr Alignment) where parseJSON = parseExpr
 instance FromJSON (Expr TextFit) where parseJSON = parseExpr
 instance FromJSON (Expr BoxAnchor) where parseJSON = parseExpr
 instance FromJSON (Expr Justify) where parseJSON = parseExpr
 instance FromJSON (Expr TextTransform) where parseJSON = parseExpr
-instance FromJSON (Expr FontList) where parseJSON = parseExpr
-instance FromJSON (Expr DashArray) where parseJSON = parseExpr
+instance FromJSON (Expr FontList) where parseJSON = parseArray
+instance FromJSON (Expr DashArray) where parseJSON = parseArray
 
 instance IsValue Visibility
 instance IsValue SpriteId
@@ -1483,7 +1486,9 @@ instance IsValue TextFit
 instance IsValue BoxAnchor
 instance IsValue Justify
 instance IsValue TextTransform
-instance IsValue FontList
+instance IsValue FontList where
+  fromLiteral o = fromLiteralArr o <|> parseJSON o
+  toLiteral = toLiteralArr
 instance IsValue DashArray
 
 $(deriveJSON defaultOptions ''Sprite)
