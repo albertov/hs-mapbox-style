@@ -29,7 +29,8 @@ jsonProp _ =
   \(a :: a) ->
     let encoded = encode a
         decoded = eitherDecode encoded
-    in decoded `shouldBe` Right a
+    in counterexample (show (encoded, decoded)) $
+       decoded `shouldBe` Right a
 
 laxJsonProp
   :: forall p a.

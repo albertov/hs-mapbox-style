@@ -38,7 +38,7 @@ module Mapbox.Style.Layer (
 , Visibility (..)
 , LineCap (..)
 , LineJoin (..)
-, Padding
+, Padding (..)
 , Translate
 , Offset
 , XY (..)
@@ -154,7 +154,7 @@ data Layer v
     , iconRotationAlignment :: Maybe (Property Alignment)
     , iconSize              :: Maybe (Property Factor)
     , iconTextFit           :: Maybe (Property TextFit)
-    , iconTextFitPadding    :: Maybe (Property (XY Padding))
+    , iconTextFitPadding    :: Maybe (Property Padding)
     , iconImage             :: Maybe (Property SpriteId)
     , iconRotate            :: Maybe (Property Degrees)
     , iconPadding          :: Maybe (Property Pixels)
@@ -710,7 +710,7 @@ instance ToJSON v => ToJSON (Layer v) where
       [ transProp "fill-extrusion-opacity" opacity
       , transProp "fill-extrusion-color" color
       , transProp "fill-extrusion-translate" translate
-      , propL     "fill-translate-anchor" translateAnchor
+      , propL     "fill-extrusion-translate-anchor" translateAnchor
       , transProp "fill-extrusion-pattern" pattern
       , transProp "fill-extrusion-height" height
       , transProp "fill-extrusion-base" base
@@ -900,7 +900,7 @@ instance FromJSON v => FromJSON (Layer v) where
         opacity <- getTransitionableProp paint "fill-extrusion-opacity"
         color <- getTransitionableProp paint "fill-extrusion-color"
         translate <- getTransitionableProp paint "fill-extrusion-translate"
-        translateAnchor <- getProp paint "fill-translate-anchor"
+        translateAnchor <- getProp paint "fill-extrusion-translate-anchor"
         pattern <- getTransitionableProp paint  "fill-extrusion-pattern"
         height <- getTransitionableProp paint  "fill-extrusion-height"
         base <- getTransitionableProp paint  "fill-extrusion-base"
@@ -1298,7 +1298,21 @@ instance FromJSON LineJoin where
     "miter" -> pure MiterJoin
     other -> failT ("Invalid line-join: " <> other)
 
-data Padding
+data Padding = Padding
+  { paddingTop :: Pixels
+  , paddingRight :: Pixels
+  , paddingBottom :: Pixels
+  , paddingLeft :: Pixels
+  } deriving (Eq, Show, Generic)
+
+instance ToJSON Padding where
+  toJSON (Padding a b c d) = toJSON [a,b,c,d]
+
+instance FromJSON Padding where
+  parseJSON = parseJSON >=> \case
+    [a,b,c,d] -> pure (Padding a b c d)
+    _     -> failT "expected a 4-element array"
+
 data Translate
 data Offset
 data XY t = XY Pixels Pixels
@@ -1445,6 +1459,7 @@ instance FromJSON (Expr SpriteId) where parseJSON = parseExpr
 instance FromJSON (Expr LineCap) where parseJSON = parseExpr
 instance FromJSON (Expr LineJoin) where parseJSON = parseExpr
 instance FromJSON (Expr Anchor) where parseJSON = parseExpr
+instance FromJSON (Expr Padding) where parseJSON = parseExpr
 instance Typeable a => FromJSON (Expr (XY a)) where parseJSON = parseExpr
 instance FromJSON (Expr SymbolPlacement) where parseJSON = parseExpr
 instance FromJSON (Expr Alignment) where parseJSON = parseExpr
@@ -1462,6 +1477,7 @@ instance IsValue LineJoin
 instance IsValue Anchor
 instance Typeable a => IsValue (XY a)
 instance IsValue SymbolPlacement
+instance IsValue Padding
 instance IsValue Alignment
 instance IsValue TextFit
 instance IsValue BoxAnchor

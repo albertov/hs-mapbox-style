@@ -45,6 +45,7 @@ data Source v
   | RasterDEM
     { ref :: Either URI TileJSON
     , tileSize :: Maybe TileSize
+    , encoding :: Maybe Text
     }
   | GeoJSON
     { _data :: Either URI GeoJSONData
@@ -84,10 +85,10 @@ rasterInline :: TileJSON -> Source v
 rasterInline = flip Raster Nothing . Right
 
 rasterDEM :: URI -> Source v
-rasterDEM = flip RasterDEM Nothing . Left
+rasterDEM uri = RasterDEM (Left uri) Nothing Nothing
 
 rasterDEMInline :: TileJSON -> Source v
-rasterDEMInline = flip RasterDEM Nothing . Right
+rasterDEMInline tj = RasterDEM (Right tj) Nothing Nothing
 
 geoJSON :: URI -> Source v
 geoJSON uri = GeoJSON
@@ -126,7 +127,7 @@ instance FromJSON ImageCoordinates where
     _ -> fail "invalid image coordinates"
 
 type ElementId = Text
-type GeoJSONData = Value
+type GeoJSONData = Object
 type TileSize = Int
 
 instance ToJSON v => ToJSON (Source v) where
@@ -136,10 +137,17 @@ instance ToJSON v => ToJSON (Source v) where
     object (catMaybes [Just ("type","raster"), Just ("url".=v),prop "tileSize" ts])
   toJSON (Raster (Right v) ts) =
     injectPairs (catMaybes [Just ("type","raster"), prop "tileSize" ts]) (toJSON v)
-  toJSON (RasterDEM (Left v) ts) =
-    object (catMaybes [Just ("type","raster-dem"), Just ("url".=v),prop "tileSize" ts])
-  toJSON (RasterDEM (Right v) ts) =
-    injectPairs (catMaybes [Just ("type","raster-dem"), prop "tileSize" ts]) (toJSON v)
+  toJSON (RasterDEM (Left v) ts enc) = object (catMaybes
+    [ Just ("type","raster-dem")
+    , Just ("url".=v)
+    , prop "tileSize" ts
+    , prop "encoding" enc
+    ])
+  toJSON (RasterDEM (Right v) ts enc) = injectPairs (catMaybes
+    [ Just ("type","raster-dem")
+    , prop "tileSize" ts
+    , prop "encoding" enc
+    ]) (toJSON v)
   toJSON GeoJSON {..} = object $ catMaybes
     [ Just ("type", "geojson")
     , Just ("data", either toJSON toJSON _data)
@@ -179,7 +187,7 @@ instance FromJSON v => FromJSON (Source v) where
                <*> o .:? "tileSize"
       "raster-dem" ->
         RasterDEM <$> (Left <$> o .: "url" <|> Right <$> parseJSON v)
-                  <*> o .:? "tileSize"
+                  <*> o .:? "tileSize" <*> o .:? "encoding"
       "geojson" -> do
         _data <- Left <$> o .: "data" <|> Right <$> o .: "data"
         maxzoom <- o .:? "maxzoom"

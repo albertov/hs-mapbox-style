@@ -55,6 +55,7 @@ test-suite spec
     hspec,
     hspec-core,
     Glob,
+    vector,
     text,
     bytestring,
     unordered-containers,

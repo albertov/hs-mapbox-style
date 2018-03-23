@@ -20,7 +20,7 @@ import Mapbox.Style (
   , Stops, ZoomStop(..), PropStop(..), ZoomPropStop(..), URI(..)
   , Source, TileJSON, TileScheme, SemVersion, ImageCoordinates, Style'
   , LonLat(..), LonLatZoom(..), MustacheTemplate(..), Bounds(..)
-  , Position(..), Light(..)
+  , Position(..), Light(..), Padding
   )
 import Mapbox.Style.Expression (Expr(..))
 
@@ -259,6 +259,7 @@ deriving instance Arbitrary MustacheTemplate
 instance Arbitrary (Expr Aeson.Value) where arbitrary = expr_
 instance Arbitrary (Expr SpriteId) where arbitrary = expr_
 instance Arbitrary (Expr Justify) where arbitrary = expr_
+instance Arbitrary (Expr Padding) where arbitrary = expr_
 instance Arbitrary (Expr TextTransform) where arbitrary = expr_
 instance Arbitrary (Expr Anchor) where arbitrary = expr_
 instance Arbitrary (Expr LineCap) where arbitrary = expr_
@@ -372,6 +373,11 @@ instance (Arbitrary (Expr v), Arbitrary v) => Arbitrary (Property v) where
 instance Arbitrary SourceRef where
   arbitrary = genericArbitrary
   shrink = genericShrink
+
+instance Arbitrary Padding where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
 
 
 instance Arbitrary (XY v) where

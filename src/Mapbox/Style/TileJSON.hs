@@ -92,8 +92,8 @@ instance ToJSON TileJSON where
     , prop "legend" legend
     , prop "scheme" scheme
     , Just ("tiles" .= tiles)
-    , Just ("grids" .= grids)
-    , Just ("data" .= _data)
+    , prop "data" (if null _data then Nothing else Just _data)
+    , prop "grids "(if null grids then Nothing else Just grids)
     , prop "minzoom" minzoom
     , prop "maxzoom" maxzoom
     , prop "bounds" bounds

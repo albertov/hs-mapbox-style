@@ -83,7 +83,7 @@ module Mapbox.Style (
 , Visibility (..)
 , LineCap (..)
 , LineJoin (..)
-, Padding
+, Padding (..)
 , Translate
 , Offset
 , XY (..)
