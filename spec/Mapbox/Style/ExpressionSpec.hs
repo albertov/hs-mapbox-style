@@ -7,7 +7,7 @@ import Data.Proxy (Proxy(..))
 import Mapbox.TestUtil
 import Mapbox.Style.Expression (Expr, Interpolation)
 import Mapbox.Style.Types (Number, Color)
-import Mapbox.Style.Instances ()
+import Mapbox.Style.QuickCheck ()
 import Data.Text (Text)
 import Data.Typeable (Typeable, typeOf)
 import Test.Hspec

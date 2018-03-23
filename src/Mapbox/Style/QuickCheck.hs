@@ -5,15 +5,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Mapbox.Style.Instances () where
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
+module Mapbox.Style.QuickCheck () where
+
+import Mapbox.Style (
+    StrMap, Color(..), Number
+  , IsValue, Interpolation(..), ArrayCheck(..), Bindings, ExprType
+  , Layer, XY(..), Transitionable(..), Transition(..), Property(..)
+  , Visibility, SpriteId(..), DashArray(..), SymbolPlacement
+  , SourceRef, Anchor, LineCap, LineJoin, Alignment, TextFit
+  , BoxAnchor, ColorSpace, Justify, TextTransform, FontList(..)
+  , Stops, ZoomStop(..), PropStop(..), ZoomPropStop(..)
+  )
+import Mapbox.Style.Expression (Expr(..))
 
 import qualified Data.Aeson as Aeson
 import Data.Aeson (Value)
-import Test.QuickCheck
+import Test.QuickCheck hiding (Property)
+import Test.QuickCheck.Arbitrary.Generic (genericArbitrary, genericShrink)
 import Test.QuickCheck.Instances ()
-import Mapbox.Style.Types (StrMap, Color(..), Number)
-import Mapbox.Style.Expression (
-    Expr(..), IsValue, Interpolation(..), ArrayCheck(..), Bindings, ExprType)
 import Data.List (words)
 import Protolude hiding (Any, All, get)
 
@@ -112,13 +124,6 @@ step_ = scale (min maxDepth) $ sized $ \n -> if n>0
   then resize (n-1) (Step <$> arbitrary <*> arbitrary <*> arbitrary)
   else lit
 
-instance Arbitrary (Expr Aeson.Value) where arbitrary = expr_
-instance Arbitrary (Expr Bool) where arbitrary = boolean
-instance Arbitrary (Expr Color) where arbitrary = color
-instance Arbitrary (Expr Word8) where arbitrary = number
-instance Arbitrary (Expr Number) where arbitrary = number
-instance Arbitrary (Expr Text) where arbitrary = string
-instance (IsValue a, Arbitrary a) => Arbitrary (Expr (StrMap a)) where arbitrary = object
 
 instance Arbitrary Color where
   arbitrary = elements (map (Color . toS) (words "red blue indigo yellow orange black white"))
@@ -228,8 +233,45 @@ instance Arbitrary Aeson.Value where
                   , pure Aeson.Null
                   ]
 
-instance Arbitrary ExprType where
-    arbitrary = elements [minBound..maxBound]
+instance Arbitrary ExprType where arbitrary = elements [minBound..maxBound]
+instance Arbitrary Justify where arbitrary = elements [minBound..maxBound]
+instance Arbitrary Anchor where arbitrary = elements [minBound..maxBound]
+instance Arbitrary LineCap where arbitrary = elements [minBound..maxBound]
+instance Arbitrary LineJoin where arbitrary = elements [minBound..maxBound]
+instance Arbitrary Visibility where arbitrary = elements [minBound..maxBound]
+instance Arbitrary SymbolPlacement where arbitrary = elements [minBound..maxBound]
+instance Arbitrary Alignment where arbitrary = elements [minBound..maxBound]
+instance Arbitrary BoxAnchor where arbitrary = elements [minBound..maxBound]
+instance Arbitrary ColorSpace where arbitrary = elements [minBound..maxBound]
+instance Arbitrary TextFit where arbitrary = elements [minBound..maxBound]
+instance Arbitrary TextTransform where arbitrary = elements [minBound..maxBound]
+
+deriving instance Arbitrary SpriteId
+deriving instance Arbitrary FontList
+deriving instance Arbitrary DashArray
+
+instance Arbitrary (Expr Aeson.Value) where arbitrary = expr_
+instance Arbitrary (Expr SpriteId) where arbitrary = expr_
+instance Arbitrary (Expr Justify) where arbitrary = expr_
+instance Arbitrary (Expr TextTransform) where arbitrary = expr_
+instance Arbitrary (Expr Anchor) where arbitrary = expr_
+instance Arbitrary (Expr LineCap) where arbitrary = expr_
+instance Arbitrary (Expr BoxAnchor) where arbitrary = expr_
+instance Arbitrary (Expr TextFit) where arbitrary = expr_
+instance Arbitrary (Expr FontList) where arbitrary = expr_
+instance Arbitrary (Expr LineJoin) where arbitrary = expr_
+instance Arbitrary (Expr SymbolPlacement) where arbitrary = expr_
+instance Arbitrary (Expr Alignment) where arbitrary = expr_
+instance Arbitrary (Expr DashArray) where arbitrary = expr_
+instance Arbitrary (Expr Bool) where arbitrary = boolean
+instance Arbitrary (Expr Color) where arbitrary = color
+instance Arbitrary (Expr Word8) where arbitrary = number
+instance Arbitrary (Expr Number) where arbitrary = number
+instance Arbitrary (Expr Text) where arbitrary = string
+instance (IsValue a, Arbitrary a) => Arbitrary (Expr (StrMap a)) where arbitrary = object
+
+instance Typeable v => Arbitrary (Expr (XY v)) where arbitrary = expr_
+
 instance Arbitrary ArrayCheck where
     arbitrary = ArrayCheck <$> arbitrary
                            <*> arbMay (getPositive <$> arbitrary)
@@ -240,5 +282,50 @@ instance Arbitrary Interpolation where
                     , CubicBezier <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
                     ]
 
+instance Arbitrary x => Arbitrary (Transitionable x) where
+  arbitrary = T <$> arbitrary <*> arbitrary
+
+instance Arbitrary Transition where
+  arbitrary = Transition <$> arbitrary <*> arbitrary
+
+instance Arbitrary v => Arbitrary (ZoomStop v) where
+  arbitrary = ZoomStop
+          <$> (fromIntegral <$> choose @Int (0,32))
+          <*> arbitrary
+
+instance Arbitrary v => Arbitrary (PropStop v) where
+  arbitrary = PropStop
+          <$> arbitrary @Value
+          <*> arbitrary
+
+instance Arbitrary v => Arbitrary (ZoomPropStop v) where
+  arbitrary = ZoomPropStop
+          <$> (fromIntegral <$> choose @Int (0,32))
+          <*> arbitrary @Value
+          <*> arbitrary
+
+
+
+
 arbMay :: Gen a -> Gen (Maybe a)                           
 arbMay a = oneof [pure Nothing, Just <$> a]
+
+instance Arbitrary v => Arbitrary (Layer v) where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance (Arbitrary (Expr v), Arbitrary v) => Arbitrary (Stops v) where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance (Arbitrary (Expr v), Arbitrary v) => Arbitrary (Property v) where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance Arbitrary SourceRef where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+
+instance Arbitrary (XY v) where
+  arbitrary = XY <$> arbitrary <*> arbitrary

@@ -15,6 +15,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Mapbox.Style.Layer (
   Anchor (..)
 , Layer (..)
@@ -287,7 +288,7 @@ data Layer v
     , accentColor     :: Maybe (Transitionable (Property Color))
     }
   | VendorLayer v
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 background :: Text -> Layer v
 background id = Background
@@ -1015,7 +1016,7 @@ instance IsList FontList where
 data SourceRef
   = SourceRef Text
   | VectorSourceRef Text Text
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data Sprite = Sprite
   { width      :: Int
@@ -1023,7 +1024,7 @@ data Sprite = Sprite
   , x          :: Int
   , y          :: Int
   , pixelRatio :: Double
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic)
 
 type SpriteMap = HM.HashMap SpriteId Sprite
 
@@ -1086,7 +1087,7 @@ data Property o
     , default_ :: Maybe (Expr o)
     , colorSpace :: Maybe ColorSpace
     }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance (FromJSON o, FromJSON (Expr o)) => FromJSON (Property o) where
   parseJSON v = withObject "function" parseFun v
@@ -1215,10 +1216,10 @@ instance FromJSON o => FromJSON (ZoomPropStop o) where
       _      -> failT "Expected 2-item array for property function stop"
 
 data Stops o
-  =  ZoomStops            [ZoomStop o]
+  =  ZoomStops          [ZoomStop o]
   |  PropStops     Text [PropStop o]
   |  ZoomPropStops Text [ZoomPropStop o]
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 stopsProperty :: Stops o -> Maybe Text
 stopsProperty (ZoomStops     _  ) = Nothing
