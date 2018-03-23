@@ -919,7 +919,7 @@ instance FromJSON v => FromJSON (Layer v) where
         illuminationAnchor <- getProp paint "hillshade-illumination-anchor"
         exageration <- getTransitionableProp paint "hillshade-exaggeration"
         shadowColor <- getTransitionableProp paint "hillshade-shadow-color"
-        highlightColor <- getTransitionableProp paint "hillshade-hightlight-color"
+        highlightColor <- getTransitionableProp paint "hillshade-highlight-color"
         accentColor <- getTransitionableProp paint "hillshade-accent-color"
         pure Hillshade {..}
       _ -> VendorLayer <$> parseJSON ob
