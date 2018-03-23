@@ -33,7 +33,7 @@ import qualified Data.HashMap.Strict as HM
 import Protolude
 import Prelude (fail)
 
-data Source
+data Source v
   = Vector
     { ref :: Either URI TileJSON
     }
@@ -67,27 +67,28 @@ data Source
     , coordinates :: ImageCoordinates
     , animate     :: Maybe Bool
     }
+  | Vendor v
   deriving (Eq, Show)
 
-vector :: URI -> Source
+vector :: URI -> Source v
 vector = Vector . Left
 
-vectorInline :: TileJSON -> Source
+vectorInline :: TileJSON -> Source v
 vectorInline = Vector . Right
 
-raster :: URI -> Source
+raster :: URI -> Source v
 raster = flip Raster Nothing . Left
 
-rasterInline :: TileJSON -> Source
+rasterInline :: TileJSON -> Source v
 rasterInline = flip Raster Nothing . Right
 
-rasterDEM :: URI -> Source
+rasterDEM :: URI -> Source v
 rasterDEM = flip RasterDEM Nothing . Left
 
-rasterDEMInline :: TileJSON -> Source
+rasterDEMInline :: TileJSON -> Source v
 rasterDEMInline = flip RasterDEM Nothing . Right
 
-geoJSON :: URI -> Source
+geoJSON :: URI -> Source v
 geoJSON uri = GeoJSON
   { _data = Left uri
   , maxzoom = Nothing
@@ -98,13 +99,13 @@ geoJSON uri = GeoJSON
   , clusterMaxZoom = Nothing
   }
 
-image :: URI -> ImageCoordinates -> Source
+image :: URI -> ImageCoordinates -> Source v
 image = Image
 
-video :: URI -> ImageCoordinates -> Source
+video :: URI -> ImageCoordinates -> Source v
 video u = Video (pure u)
 
-canvas :: ElementId -> ImageCoordinates -> Source
+canvas :: ElementId -> ImageCoordinates -> Source v
 canvas ei cs = Canvas ei cs Nothing
 
 
@@ -127,7 +128,7 @@ type ElementId = Text
 type GeoJSONData = Value
 type TileSize = Int
 
-instance ToJSON Source where
+instance ToJSON v => ToJSON (Source v) where
   toJSON (Vector (Left v)) = object [("type","vector"), "url".=v]
   toJSON (Vector (Right v)) = injectType "vector" (toJSON v)
   toJSON (Raster (Left v) ts) =
@@ -156,6 +157,7 @@ instance ToJSON Source where
     , Just ("coordinates".=coordinates)
     , prop "animate" animate
     ]
+  toJSON (Vendor v) = toJSON v
 
 injectType :: Text -> Value -> Value
 injectType ty = injectPairs [("type",String ty)]
@@ -165,7 +167,7 @@ injectPairs ps (Object o) = Object (foldr (uncurry HM.insert) o ps)
 injectPairs _  o          = o
 
 
-instance FromJSON Source where
+instance FromJSON v => FromJSON (Source v) where
   parseJSON v = parseJSON v >>= \o -> do
     ty :: Text <- o .: "type"
     case ty of
@@ -189,4 +191,4 @@ instance FromJSON Source where
       "image" -> Image <$> o .: "url" <*> o.: "coordinates"
       "video" -> Video <$> o .: "urls" <*> o.: "coordinates"
       "canvas" -> Canvas <$> o.:"canvas" <*> o.:"coordinates" <*> o.:?"animate"
-      _ -> fail (toS ("unknown source type:" <> ty))
+      _ -> Vendor <$> parseJSON v

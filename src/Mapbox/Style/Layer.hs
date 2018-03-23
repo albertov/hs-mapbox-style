@@ -77,7 +77,7 @@ import Protolude hiding (filter,join)
 
 
 
-data Layer
+data Layer v
   = Background
     { id          :: Text
     , visibility  :: Maybe Visibility
@@ -286,9 +286,10 @@ data Layer
     , highlightColor     :: Maybe (Transitionable (Property Color))
     , accentColor     :: Maybe (Transitionable (Property Color))
     }
+  | VendorLayer v
   deriving (Eq, Show)
 
-background :: Text -> Layer
+background :: Text -> Layer v
 background id = Background
   { id
   , visibility  = Nothing
@@ -303,7 +304,7 @@ background id = Background
   , opacity     = Nothing
   }
 
-fill :: Text -> SourceRef -> Layer
+fill :: Text -> SourceRef -> Layer v
 fill id source = Fill
   { id
   , visibility  = Nothing
@@ -323,7 +324,7 @@ fill id source = Fill
   , pattern         = Nothing
   }
 
-line :: Text -> SourceRef -> Layer
+line :: Text -> SourceRef -> Layer v
 line id source = Line
   { id
   , visibility  = Nothing
@@ -350,7 +351,7 @@ line id source = Line
   , pattern     = Nothing
   }
 
-symbol :: Text -> SourceRef -> Layer
+symbol :: Text -> SourceRef -> Layer v
 symbol id source = Symbol
   { id
   , visibility  = Nothing
@@ -413,7 +414,7 @@ symbol id source = Symbol
   , textTranslateAnchor  = Nothing
   }
 
-rasterLayer :: Text -> SourceRef -> Layer
+rasterLayer :: Text -> SourceRef -> Layer v
 rasterLayer id source = RasterLayer
   { id
   , visibility  = Nothing
@@ -432,7 +433,7 @@ rasterLayer id source = RasterLayer
   , fadeDuration  = Nothing
   }
 
-circle :: Text -> SourceRef -> Layer
+circle :: Text -> SourceRef -> Layer v
 circle id source = Circle
   { id
   , visibility  = Nothing
@@ -456,7 +457,7 @@ circle id source = Circle
   , strokeOpacity   = Nothing
   }
 
-fillExtrusion :: Text -> SourceRef -> Layer
+fillExtrusion :: Text -> SourceRef -> Layer v
 fillExtrusion id source = FillExtrusion
   { id
   , visibility  = Nothing
@@ -476,7 +477,7 @@ fillExtrusion id source = FillExtrusion
   , base    = Nothing
   }
 
-heatmap :: Text -> SourceRef -> Layer
+heatmap :: Text -> SourceRef -> Layer v
 heatmap id source = Heatmap
   { id
   , visibility  = Nothing
@@ -494,7 +495,7 @@ heatmap id source = Heatmap
   , opacity     = Nothing
   }
 
-hillshade :: Text -> SourceRef -> Layer
+hillshade :: Text -> SourceRef -> Layer v
 hillshade id source = Hillshade
   { id
   , visibility  = Nothing
@@ -523,7 +524,7 @@ paintProps = mapProp "paint"
 layoutProps = mapProp "layout"
 
 
-instance ToJSON Layer where
+instance ToJSON v => ToJSON (Layer v) where
   toJSON (Background {..}) = object $ catMaybes
     [ Just ("id" .= id), Just ("type","background")
     , prop "metadata" metadata
@@ -751,6 +752,7 @@ instance ToJSON Layer where
       , transProp "hillshade-accent-color" accentColor
       ]
     ]
+  toJSON (VendorLayer v) = toJSON v
 
 propL
   :: ToJSON o
@@ -769,7 +771,7 @@ transProp t (Just (T o (Just tr))) =
   , (t <> "-transition") .= tr
   ]
 
-instance FromJSON Layer where
+instance FromJSON v => FromJSON (Layer v) where
   parseJSON = withObject "layer" $ \m -> do
     id <- m .: "id"
     metadata <- m .:? "metadata"
@@ -919,7 +921,7 @@ instance FromJSON Layer where
         highlightColor <- getTransitionableProp paint "hillshade-hightlight-color"
         accentColor <- getTransitionableProp paint "hillshade-accent-color"
         pure Hillshade {..}
-      unknown -> failT ("Unknown layer type: " <> unknown)
+      _ -> VendorLayer <$> parseJSON (Object m)
 
     where
 
@@ -946,7 +948,7 @@ sourceRefPairs :: SourceRef -> [Pair]
 sourceRefPairs (VectorSourceRef s l) = ["source".=s, "source-layer".=l]
 sourceRefPairs (SourceRef s) = ["source".=s]
 
-instance {-# OVERLAPS #-} FromJSON [Layer] where
+instance {-# OVERLAPS #-} FromJSON v => FromJSON [Layer v] where
   parseJSON = mapM parseJSON <=< derefLayers <=< parseJSON
 
 derefLayers :: [Value] -> Parser [Value]

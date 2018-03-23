@@ -132,7 +132,9 @@ import Data.Aeson.TH (deriveJSON)
 import Protolude hiding (get)
 import Prelude (fail)
 
-data Style = Style
+type Style = Style' () ()
+
+data Style' l s = Style
   { version    :: Int
   , name       :: Maybe Text
   , metadata   :: Maybe (StrMap Value)
@@ -141,16 +143,16 @@ data Style = Style
   , bearing    :: Maybe Double
   , pitch      :: Maybe Double
   , light      :: Maybe Light
-  , sources    :: StrMap Source
+  , sources    :: StrMap (Source s)
   , sprite     :: Maybe URI
   , glyphs     :: Maybe URI
   , transition :: Maybe Transition
-  , layers     :: [Layer]
+  , layers     :: [Layer l]
   }
   deriving (Eq, Show)
 
-style :: Style
-style = Style
+style' :: Style' l s
+style' = Style
   { version    = 8
   , name       = Nothing
   , metadata   = Nothing
@@ -165,6 +167,9 @@ style = Style
   , transition = Nothing
   , layers     = []
   }
+
+style :: Style
+style = style'
 
 data Position = Position
   { distance  :: Double
@@ -190,7 +195,7 @@ data Light = Light
   deriving (Eq, Show)
 
 $(deriveJSON (defaultOptions { omitNothingFields=True}) ''Light)
-$(deriveJSON (defaultOptions { omitNothingFields=True}) ''Style)
+$(deriveJSON (defaultOptions { omitNothingFields=True}) ''Style')
 makeUnderscoreSuffixedFields ''Light
-makeUnderscoreSuffixedFields ''Style
+makeUnderscoreSuffixedFields ''Style'
 makeUnderscoreSuffixedFields ''Position
