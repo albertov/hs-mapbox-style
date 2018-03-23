@@ -45,7 +45,7 @@ module Mapbox.Style (
 , properties
 , (.<), (.<=), (.==), (.!=), (.>), (.>=), (.%)
 
-, Source
+, Source (..)
 , ImageCoordinates (..)
 , ElementId
 , GeoJSONData
@@ -62,7 +62,7 @@ module Mapbox.Style (
 , canvas
 
 , Anchor (..)
-, Layer
+, Layer (..)
 , Transition (..)
 , Transitionable (..)
 , Pixels
