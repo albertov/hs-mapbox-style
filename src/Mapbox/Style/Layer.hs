@@ -50,6 +50,7 @@ module Mapbox.Style.Layer (
 , FontList (..)
 , DashArray (..)
 
+, tp
 , background
 , fill
 , line
@@ -762,8 +763,8 @@ transProp
   => Text -> Maybe (Transitionable (Property o))
   -> [Pair]
 transProp _ Nothing = []
-transProp t (Just (Transitionable o Nothing)) = [t .= o]
-transProp t (Just (Transitionable o (Just tr))) =
+transProp t (Just (T o Nothing)) = [t .= o]
+transProp t (Just (T o (Just tr))) =
   [ t .= o
   , (t <> "-transition") .= tr
   ]
@@ -929,7 +930,7 @@ instance FromJSON Layer where
     getTransitionableProp o p = do
       mv <- o .:? p
       case mv of
-        Just v  -> Just <$> (Transitionable <$> pure v <*> o .:? (p<>"-transition"))
+        Just v  -> Just <$> (T <$> pure v <*> o .:? (p<>"-transition"))
         Nothing -> pure Nothing
 
 decodeSourceRef
@@ -1028,8 +1029,15 @@ type SpriteMap = HM.HashMap SpriteId Sprite
 newtype SpriteId = SpriteId Text
   deriving (Eq, Show, ToJSON, FromJSON, IsString)
 
-data Transitionable o = Transitionable o (Maybe Transition)
+data Transitionable o = T
+  { transitionable :: o
+  , transition :: Maybe Transition
+  }
   deriving (Eq, Show)
+
+-- | Convenience constructor por a transitionable property
+tp :: Expr o -> Transitionable (Property o)
+tp = flip T Nothing . P
 
 type Milliseconds = Number
 
@@ -1050,7 +1058,7 @@ instance FromJSON Transition where
     Transition <$> o .:? "delay" <*> o .:? "duration"
 
 data Property o
-  = Prop (Expr o)
+  = P (Expr o)
   | IdentityFun
     { base     :: Maybe Number
     , default_ :: Maybe (Expr o)
@@ -1080,7 +1088,7 @@ data Property o
 
 instance (FromJSON o, FromJSON (Expr o)) => FromJSON (Property o) where
   parseJSON v = withObject "function" parseFun v
-            <|> Prop <$> parseJSON v
+            <|> P <$> parseJSON v
     where
     parseFun o = do
       type_ <- o .:? "type" .!= ("identity" :: Text)
@@ -1111,7 +1119,7 @@ instance (FromJSON o, FromJSON (Expr o)) => FromJSON (Property o) where
 
 instance IsValue o =>  ToJSON (Property o) where
   toJSON = \case
-    Prop e -> toJSON e
+    P e -> toJSON e
     ExponentialFun {stops,base,default_,colorSpace} -> object $ catMaybes
       [ Just ("type","exponential")
       , Just ("stops" .= stops)

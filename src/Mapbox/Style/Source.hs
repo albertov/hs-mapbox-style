@@ -46,7 +46,7 @@ data Source
     , tileSize :: Maybe TileSize
     }
   | GeoJSON
-    { data_ :: Either URI GeoJSONData
+    { _data :: Either URI GeoJSONData
     , maxzoom :: Maybe Zoom
     , buffer :: Maybe Int
     , tolerance :: Maybe Number
@@ -89,7 +89,7 @@ rasterDEMInline = flip RasterDEM Nothing . Right
 
 geoJSON :: URI -> Source
 geoJSON uri = GeoJSON
-  { data_ = Left uri
+  { _data = Left uri
   , maxzoom = Nothing
   , buffer = Nothing
   , tolerance  = Nothing
@@ -140,7 +140,7 @@ instance ToJSON Source where
     injectPairs (catMaybes [Just ("type","raster-dem"), prop "tileSize" ts]) (toJSON v)
   toJSON GeoJSON {..} = object $ catMaybes
     [ Just ("type", "geojson")
-    , Just ("data", either toJSON toJSON data_)
+    , Just ("data", either toJSON toJSON _data)
     , prop "maxzoom" maxzoom
     , prop "buffer" buffer
     , prop "tolerance" tolerance
@@ -178,7 +178,7 @@ instance FromJSON Source where
         RasterDEM <$> (Left <$> o .: "url" <|> Right <$> parseJSON v)
                   <*> o .:? "tileSize"
       "geojson" -> do
-        data_ <- Left <$> o .: "data" <|> Right <$> o .: "data"
+        _data <- Left <$> o .: "data" <|> Right <$> o .: "data"
         maxzoom <- o .:? "maxzoom"
         buffer <- o .:? "buffer"
         tolerance <- o .:? "tolerance"

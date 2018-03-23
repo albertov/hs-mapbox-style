@@ -3,7 +3,11 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Mapbox.Style.TileJSON where
+module Mapbox.Style.TileJSON (
+  TileJSON (..)
+, TileScheme (..)
+, tileJSON
+) where
 
 import Mapbox.Style.Common (prop)
 import Mapbox.Style.Types
@@ -48,12 +52,30 @@ data TileJSON = TileJSON
   , scheme      :: Maybe TileScheme
   , tiles       :: NonEmpty URI
   , grids       :: [URI]
-  , data_       :: [URI]
+  , _data       :: [URI]
   , minzoom     :: Maybe Zoom
   , maxzoom     :: Maybe Zoom
   , bounds      :: Maybe Bounds
   , center      :: Maybe LonLatZoom
   } deriving (Eq, Show)
+
+tileJSON :: URI -> TileJSON
+tileJSON uri = TileJSON
+  { name        = Nothing
+  , description = Nothing
+  , version     = Nothing
+  , attribution = Nothing
+  , template    = Nothing
+  , legend      = Nothing
+  , scheme      = Nothing
+  , tiles       = pure uri
+  , grids       = []
+  , _data       = []
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , bounds      = Nothing
+  , center      = Nothing
+  }
 
 
 instance ToJSON TileJSON where
@@ -67,7 +89,7 @@ instance ToJSON TileJSON where
     , prop "scheme" scheme
     , Just ("tiles" .= tiles)
     , Just ("grids" .= grids)
-    , Just ("data" .= data_)
+    , Just ("data" .= _data)
     , prop "minzoom" minzoom
     , prop "maxzoom" maxzoom
     , prop "bounds" bounds
@@ -85,7 +107,7 @@ instance FromJSON TileJSON where
     scheme <- o .:? "scheme"
     tiles <- o .: "tiles"
     grids <- o .:? "grids" .!= []
-    data_ <- o .:? "data" .!= []
+    _data <- o .:? "data" .!= []
     minzoom <- o .:? "minzoom"
     maxzoom <- o .:? "maxzoom"
     bounds <- o .:? "bounds"
