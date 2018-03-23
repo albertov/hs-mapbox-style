@@ -773,7 +773,7 @@ transProp t (Just (T o (Just tr))) =
   ]
 
 instance FromJSON v => FromJSON (Layer v) where
-  parseJSON = withObject "layer" $ \m -> do
+  parseJSON ob@(Object m) = do
     id <- m .: "id"
     metadata <- m .:? "metadata"
     minzoom <- m .:? "minzoom"
@@ -800,7 +800,7 @@ instance FromJSON v => FromJSON (Layer v) where
         translate <- getTransitionableProp paint "fill-translate"
         translateAnchor <- getProp paint "fill-translate-anchor"
         pattern <- getTransitionableProp paint "fill-pattern"
-        pure (Fill{..})
+        pure Fill{..}
       "line" -> do
         source <- decodeSourceRef m
         cap <- getProp layout "line-cap"
@@ -922,10 +922,9 @@ instance FromJSON v => FromJSON (Layer v) where
         highlightColor <- getTransitionableProp paint "hillshade-hightlight-color"
         accentColor <- getTransitionableProp paint "hillshade-accent-color"
         pure Hillshade {..}
-      _ -> VendorLayer <$> parseJSON (Object m)
+      _ -> VendorLayer <$> parseJSON ob
 
     where
-
     getProp :: FromJSON a => Object -> Text -> Parser (Maybe a)
     getProp = (.:?)
 
@@ -935,6 +934,8 @@ instance FromJSON v => FromJSON (Layer v) where
       case mv of
         Just v  -> Just <$> (T <$> pure v <*> o .:? (p<>"-transition"))
         Nothing -> pure Nothing
+
+  parseJSON other = VendorLayer <$> parseJSON other
 
 decodeSourceRef
   :: Object -> Parser SourceRef
@@ -1052,21 +1053,20 @@ data Transition = Transition
 
 instance ToJSON Transition where
   toJSON (Transition{delay,duration}) = object $ catMaybes $
-    [ prop "delay" delay
-    , prop "duration" duration
+    [ prop "duration" duration
+    , prop "delay" delay
     ]
 
 instance FromJSON Transition where
   parseJSON = withObject "transition" $ \o ->
-    Transition <$> o .:? "delay" <*> o .:? "duration"
+    Transition <$> o .:? "duration" <*> o .:? "delay"
 
 data Property o
   = P (Expr o)
   | IdentityFun
     { base     :: Maybe Number
     , default_ :: Maybe (Expr o)
-    , property :: Maybe Text
-    , idStops  :: Maybe (Stops o)
+    , propOrStops  :: Either Text (Stops o)
     , colorSpace :: Maybe ColorSpace
     }
   | ExponentialFun
@@ -1100,9 +1100,9 @@ instance (FromJSON o, FromJSON (Expr o)) => FromJSON (Property o) where
       colorSpace <- o .:? "colorSpace"
       case type_ of
         "identity" -> do
-          property <- o .:? "property"
-          idStops <- Just <$> decodeStops o <|> pure (Nothing :: Maybe (Stops o))
-          pure (IdentityFun {base,property,default_,colorSpace,idStops})
+          propOrStops <- Right <$> decodeStops o
+                     <|> Left <$> o.:"property"
+          pure (IdentityFun {base,default_,colorSpace,propOrStops})
         "exponential" -> do
           stops <- decodeStops o
           pure (ExponentialFun {stops,base,default_,colorSpace})
@@ -1147,13 +1147,20 @@ instance IsValue o =>  ToJSON (Property o) where
       , prop "colorSpace" colorSpace
       , prop "property" (stopsProperty stops)
       ]
-    IdentityFun {property,base,default_,colorSpace,idStops} -> object $ catMaybes
+    IdentityFun {base,default_,colorSpace,propOrStops=Left p} -> object $ catMaybes
       [ -- Just ("type","identity") default type is "identity"
         prop "base" base
-      , prop "stops" idStops
       , prop "default" default_
       , prop "colorSpace" colorSpace
-      , prop "property" property
+      , Just ("property".=p)
+      ]
+    IdentityFun {base,default_,colorSpace,propOrStops=Right stops} -> object $ catMaybes
+      [ -- Just ("type","identity") default type is "identity"
+        prop "base" base
+      , prop "default" default_
+      , prop "colorSpace" colorSpace
+      , prop "property" (stopsProperty stops)
+      , Just ("stops" .= stops)
       ]
 
 data ZoomStop o = ZoomStop Zoom o

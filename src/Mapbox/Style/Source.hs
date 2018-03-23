@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -68,7 +69,7 @@ data Source v
     , animate     :: Maybe Bool
     }
   | Vendor v
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 vector :: URI -> Source v
 vector = Vector . Left
@@ -114,7 +115,7 @@ data ImageCoordinates = ImageCoordinates
   , topRight :: LonLat
   , bottomRight :: LonLat
   , bottomLeft :: LonLat
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic)
 
 instance ToJSON ImageCoordinates where
   toJSON ImageCoordinates{..} = toJSON [topLeft, topRight, bottomRight, bottomLeft]
@@ -168,7 +169,7 @@ injectPairs _  o          = o
 
 
 instance FromJSON v => FromJSON (Source v) where
-  parseJSON v = parseJSON v >>= \o -> do
+  parseJSON v@(Object o) = do
     ty :: Text <- o .: "type"
     case ty of
       "vector" -> Vector <$>
@@ -192,3 +193,4 @@ instance FromJSON v => FromJSON (Source v) where
       "video" -> Video <$> o .: "urls" <*> o.: "coordinates"
       "canvas" -> Canvas <$> o.:"canvas" <*> o.:"coordinates" <*> o.:?"animate"
       _ -> Vendor <$> parseJSON v
+  parseJSON v = Vendor <$> parseJSON v

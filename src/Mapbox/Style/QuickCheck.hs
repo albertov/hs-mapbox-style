@@ -17,7 +17,9 @@ import Mapbox.Style (
   , Visibility, SpriteId(..), DashArray(..), SymbolPlacement
   , SourceRef, Anchor, LineCap, LineJoin, Alignment, TextFit
   , BoxAnchor, ColorSpace, Justify, TextTransform, FontList(..)
-  , Stops, ZoomStop(..), PropStop(..), ZoomPropStop(..)
+  , Stops, ZoomStop(..), PropStop(..), ZoomPropStop(..), URI(..)
+  , Source, TileJSON, TileScheme, SemVersion, ImageCoordinates
+  , LonLat(..), LonLatZoom(..), MustacheTemplate(..), Bounds(..)
   )
 import Mapbox.Style.Expression (Expr(..))
 
@@ -233,6 +235,7 @@ instance Arbitrary Aeson.Value where
                   , pure Aeson.Null
                   ]
 
+instance Arbitrary TileScheme where arbitrary = elements [minBound..maxBound]
 instance Arbitrary ExprType where arbitrary = elements [minBound..maxBound]
 instance Arbitrary Justify where arbitrary = elements [minBound..maxBound]
 instance Arbitrary Anchor where arbitrary = elements [minBound..maxBound]
@@ -246,9 +249,11 @@ instance Arbitrary ColorSpace where arbitrary = elements [minBound..maxBound]
 instance Arbitrary TextFit where arbitrary = elements [minBound..maxBound]
 instance Arbitrary TextTransform where arbitrary = elements [minBound..maxBound]
 
+deriving instance Arbitrary URI
 deriving instance Arbitrary SpriteId
 deriving instance Arbitrary FontList
 deriving instance Arbitrary DashArray
+deriving instance Arbitrary MustacheTemplate
 
 instance Arbitrary (Expr Aeson.Value) where arbitrary = expr_
 instance Arbitrary (Expr SpriteId) where arbitrary = expr_
@@ -285,6 +290,15 @@ instance Arbitrary Interpolation where
 instance Arbitrary x => Arbitrary (Transitionable x) where
   arbitrary = T <$> arbitrary <*> arbitrary
 
+instance Arbitrary Bounds where
+  arbitrary = Bounds <$> arbitrary <*> arbitrary
+
+instance Arbitrary LonLatZoom where
+  arbitrary = LonLatZoom <$> arbitrary <*> arbitrary
+
+instance Arbitrary LonLat where
+  arbitrary = LonLat <$> arbitrary <*> arbitrary
+
 instance Arbitrary Transition where
   arbitrary = Transition <$> arbitrary <*> arbitrary
 
@@ -309,6 +323,22 @@ instance Arbitrary v => Arbitrary (ZoomPropStop v) where
 
 arbMay :: Gen a -> Gen (Maybe a)                           
 arbMay a = oneof [pure Nothing, Just <$> a]
+
+instance Arbitrary ImageCoordinates where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance Arbitrary SemVersion where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance Arbitrary TileJSON where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance Arbitrary v => Arbitrary (Source v) where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
 
 instance Arbitrary v => Arbitrary (Layer v) where
   arbitrary = genericArbitrary

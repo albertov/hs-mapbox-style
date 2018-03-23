@@ -2,10 +2,14 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Mapbox.Style.TileJSON (
   TileJSON (..)
 , TileScheme (..)
+, MustacheTemplate (..)
+, SemVersion (..)
 , tileJSON
 ) where
 
@@ -18,7 +22,7 @@ import qualified Data.Text as T
 import Prelude (fail)
 
 data SemVersion = SemVersion Int Int Int
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
 
 instance ToJSON SemVersion where
   toJSON = toJSON . showVersion
@@ -57,7 +61,7 @@ data TileJSON = TileJSON
   , maxzoom     :: Maybe Zoom
   , bounds      :: Maybe Bounds
   , center      :: Maybe LonLatZoom
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic)
 
 tileJSON :: URI -> TileJSON
 tileJSON uri = TileJSON

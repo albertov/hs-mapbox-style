@@ -115,10 +115,17 @@ module Mapbox.Style (
 , StrMap
 , Zoom
 
+, TileJSON (..)
+, TileScheme (..)
+, MustacheTemplate (..)
+, SemVersion (..)
+, tileJSON
+
 , module Mapbox.Style.Lens
 ) where
 
 import Mapbox.Style.Expression
+import Mapbox.Style.TileJSON
 import Mapbox.Style.Source
 import Mapbox.Style.Layer
 import Mapbox.Style.Types
