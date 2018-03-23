@@ -5,7 +5,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Mapbox.Style.Types (
   Number
-, UnitInterval
 , Bounds (..)
 , Color (..)
 , URI (..)
@@ -13,8 +12,6 @@ module Mapbox.Style.Types (
 , LonLatZoom (..)
 , StrMap
 , Zoom
-, mk1'
-, mk1
 ) where
 
 import Data.Aeson (FromJSON(..), ToJSON(..))
@@ -30,19 +27,6 @@ type StrMap = HashMap Text
 newtype Color = Color Text
   deriving (Show, Eq, Typeable, IsString, ToJSON, FromJSON)
 
-newtype UnitInterval = UI Number
-  deriving (Show, Eq, Typeable, ToJSON)
-
-mk1 :: Number -> Maybe UnitInterval
-mk1 v | 0<=v && v<=1 = Just (UI v)
-mk1 _ = Nothing
-
-mk1' :: Number -> UnitInterval
-mk1' = UI . max 0 . min 1
-
-instance FromJSON UnitInterval where
-  parseJSON = maybe (fail "value must be in range [0-1]") pure
-          <=< (fmap mk1 . parseJSON)
 
 newtype URI = URI Text
   deriving (Eq, Show, IsString, ToJSON, FromJSON)

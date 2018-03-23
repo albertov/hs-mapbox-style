@@ -5,15 +5,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Mapbox.Style (
-  Style (..)
-, Position (..)
-, Light (..)
-, style
-, HasAnchor(..)
-, HasPosition(..)
-, HasDistance(..)
-, HasAzimuth(..)
-, HasElevation(..)
+  module Mapbox.Style
 
 , Expr
 , ExprType (..)
@@ -21,6 +13,7 @@ module Mapbox.Style (
 , IsValue
 , Interpolation (..)
 , Bindings
+, lit
 , get
 , get'
 , at
@@ -114,7 +107,6 @@ module Mapbox.Style (
 , tp
 
 , Number
-, UnitInterval
 , Bounds (..)
 , Color (..)
 , URI (..)
@@ -122,8 +114,6 @@ module Mapbox.Style (
 , LonLatZoom (..)
 , StrMap
 , Zoom
-, mk1'
-, mk1
 
 , module Mapbox.Style.Lens
 ) where
@@ -195,11 +185,12 @@ data Light = Light
   { anchor    :: Maybe Anchor
   , position  :: Maybe Position
   , color     :: Maybe Color
-  , intensity :: Maybe UnitInterval
+  , intensity :: Maybe Number
   }
   deriving (Eq, Show)
 
 $(deriveJSON (defaultOptions { omitNothingFields=True}) ''Light)
 $(deriveJSON (defaultOptions { omitNothingFields=True}) ''Style)
 makeUnderscoreSuffixedFields ''Light
+makeUnderscoreSuffixedFields ''Style
 makeUnderscoreSuffixedFields ''Position

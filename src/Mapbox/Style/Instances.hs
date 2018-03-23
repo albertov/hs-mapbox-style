@@ -11,7 +11,7 @@ import qualified Data.Aeson as Aeson
 import Data.Aeson (Value)
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
-import Mapbox.Style.Types (UnitInterval, StrMap, Color(..), Number, mk1')
+import Mapbox.Style.Types (StrMap, Color(..), Number)
 import Mapbox.Style.Expression (
     Expr(..), IsValue, Interpolation(..), ArrayCheck(..), Bindings, ExprType)
 import Data.List (words)
@@ -115,7 +115,6 @@ step_ = scale (min maxDepth) $ sized $ \n -> if n>0
 instance Arbitrary (Expr Aeson.Value) where arbitrary = expr_
 instance Arbitrary (Expr Bool) where arbitrary = boolean
 instance Arbitrary (Expr Color) where arbitrary = color
-instance Arbitrary (Expr UnitInterval) where arbitrary = number
 instance Arbitrary (Expr Word8) where arbitrary = number
 instance Arbitrary (Expr Number) where arbitrary = number
 instance Arbitrary (Expr Text) where arbitrary = string
@@ -240,9 +239,6 @@ instance Arbitrary Interpolation where
                     , Exponential <$> arbitrary
                     , CubicBezier <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
                     ]
-
-instance Arbitrary UnitInterval where
-  arbitrary = mk1' . realToFrac <$> (choose (0,1) :: Gen Double)
 
 arbMay :: Gen a -> Gen (Maybe a)                           
 arbMay a = oneof [pure Nothing, Just <$> a]

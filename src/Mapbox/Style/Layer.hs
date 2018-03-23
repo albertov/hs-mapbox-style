@@ -89,7 +89,7 @@ data Layer
 
     , color       :: Maybe (Transitionable (Property Color))
     , pattern     :: Maybe (Transitionable (Property SpriteId))
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     }
   | Fill
     { id          :: Text
@@ -102,7 +102,7 @@ data Layer
     , source      :: SourceRef
 
     , antialias   :: Maybe (Property Bool)
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     , color       :: Maybe (Transitionable (Property Color))
     , outlineColor:: Maybe (Transitionable (Property Color))
     , translate   :: Maybe (Transitionable (Property (XY Translate)))
@@ -123,7 +123,7 @@ data Layer
     , join        :: Maybe (Property LineJoin)
     , miterLimit  :: Maybe (Property Pixels)
     , roundLimit  :: Maybe (Property Pixels)
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     , color       :: Maybe (Transitionable (Property Color))
     , translate   :: Maybe (Transitionable (Property (XY Translate)))
     , translateAnchor :: Maybe (Property Anchor)
@@ -180,14 +180,14 @@ data Layer
     , textAllowOverlap         :: Maybe (Property Bool)
     , textIgnorePlacement         :: Maybe (Property Bool)
     , textOptional         :: Maybe (Property Bool)
-    , iconOpacity     :: Maybe (Transitionable (Property UnitInterval))
+    , iconOpacity     :: Maybe (Transitionable (Property Number))
     , iconColor       :: Maybe (Transitionable (Property Color))
     , iconHaloColor       :: Maybe (Transitionable (Property Color))
     , iconHaloWidth       :: Maybe (Transitionable (Property Pixels))
     , iconHaloBlur       :: Maybe (Transitionable (Property Number))
     , iconTranslate       :: Maybe (Transitionable (Property (XY Translate)))
     , iconTranslateAnchor         :: Maybe (Property Anchor)
-    , textOpacity :: Maybe (Transitionable (Property UnitInterval))
+    , textOpacity :: Maybe (Transitionable (Property Number))
     , textColor       :: Maybe (Transitionable (Property Color))
     , textHaloColor       :: Maybe (Transitionable (Property Color))
     , textHaloWidth       :: Maybe (Transitionable (Property Pixels))
@@ -205,10 +205,10 @@ data Layer
     , filter      :: Maybe (Expr Bool)
     , source      :: SourceRef
 
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     , hueRotate     :: Maybe (Transitionable (Property Degrees))
-    , brightnessMin     :: Maybe (Transitionable (Property UnitInterval))
-    , brightnessMax     :: Maybe (Transitionable (Property UnitInterval))
+    , brightnessMin     :: Maybe (Transitionable (Property Number))
+    , brightnessMax     :: Maybe (Transitionable (Property Number))
     , saturation     :: Maybe (Transitionable (Property Number)) --TODO use a newtype for [-1,-1]
     , contrast     :: Maybe (Transitionable (Property Number)) --TODO ditto
     , fadeDuration     :: Maybe (Property Milliseconds)
@@ -226,14 +226,14 @@ data Layer
     , radius     :: Maybe (Transitionable (Property Pixels))
     , color     :: Maybe (Transitionable (Property Color))
     , blur     :: Maybe (Transitionable (Property Number))
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     , translate       :: Maybe (Transitionable (Property (XY Translate)))
     , translateAnchor         :: Maybe (Property Anchor)
     , pitchScale         :: Maybe (Property Anchor)
     , pitchAlignment         :: Maybe (Property Anchor)
     , strokeWidth     :: Maybe (Transitionable (Property Pixels))
     , strokeColor     :: Maybe (Transitionable (Property Color))
-    , strokeOpacity     :: Maybe (Transitionable (Property UnitInterval))
+    , strokeOpacity     :: Maybe (Transitionable (Property Number))
     }
   | FillExtrusion
     { id          :: Text
@@ -245,7 +245,7 @@ data Layer
     , filter      :: Maybe (Expr Bool)
     , source      :: SourceRef
 
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     , color     :: Maybe (Transitionable (Property Color))
     , translate       :: Maybe (Transitionable (Property (XY Translate)))
     , translateAnchor         :: Maybe (Property Anchor)
@@ -267,7 +267,7 @@ data Layer
     , weight     :: Maybe (Transitionable (Property Number))
     , intensity     :: Maybe (Transitionable (Property Number))
     , hmColor   :: Maybe (Property Color)
-    , opacity     :: Maybe (Transitionable (Property UnitInterval))
+    , opacity     :: Maybe (Transitionable (Property Number))
     }
   | Hillshade
     { id          :: Text
@@ -281,7 +281,7 @@ data Layer
 
     , illuminationDirection :: Maybe (Property Degrees)
     , illuminationAnchor :: Maybe (Property Anchor)
-    , exageration     :: Maybe (Transitionable (Property UnitInterval))
+    , exageration     :: Maybe (Transitionable (Property Number))
     , shadowColor     :: Maybe (Transitionable (Property Color))
     , highlightColor     :: Maybe (Transitionable (Property Color))
     , accentColor     :: Maybe (Transitionable (Property Color))

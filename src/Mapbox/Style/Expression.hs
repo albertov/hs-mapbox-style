@@ -17,6 +17,7 @@ module Mapbox.Style.Expression (
 , IsValue (..)
 , Interpolation (..)
 , Bindings
+, lit
 , get
 , get'
 , at
@@ -52,7 +53,7 @@ module Mapbox.Style.Expression (
 ) where
 
 import Mapbox.Style.Common (parsePairs, parseNEPairs)
-import Mapbox.Style.Types (Number, StrMap, UnitInterval, Color)
+import Mapbox.Style.Types (Number, StrMap, Color)
 
 import Data.Aeson (Value, FromJSON(..), ToJSON(..), withText, withArray)
 import Data.Aeson.Types (Parser)
@@ -110,7 +111,7 @@ data Expr a where
   Downcase       :: Expr Text -> Expr Text
   Upcase         :: Expr Text -> Expr Text
   RGB            :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
-  RGBA           :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr UnitInterval -> Expr Color
+  RGBA           :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Number -> Expr Color
   ToRGBA         :: Expr Color -> Expr [a]
   Minus          :: Expr a -> Expr a -> Expr a
   Mult           :: Expr a -> Expr a -> Expr a
@@ -164,7 +165,7 @@ infix 7 .%
 (.%) :: IsValue a => Expr a -> Expr a -> Expr a
 (.%) = Mod
 
-instance IsString (Expr Text) where
+instance IsString a => IsString (Expr a) where
   fromString = Lit . fromString
 
 instance Semigroup (Expr Text) where
@@ -380,7 +381,6 @@ instance IsValue a => ToJSON (Expr a) where
 
 
 instance FromJSON (Expr Value) where parseJSON = parseValue
-instance FromJSON (Expr UnitInterval) where parseJSON = parseNumber
 instance FromJSON (Expr Word8) where parseJSON = parseNumber
 instance FromJSON (Expr Number) where parseJSON = parseNumber
 instance IsValue o => FromJSON (Expr (StrMap o)) where parseJSON = parseObject
@@ -438,7 +438,6 @@ instance IsValue Value where
 
 instance IsValue Text
 instance IsValue Color
-instance IsValue UnitInterval
 instance IsValue Word8
 instance IsValue Number
 instance IsValue Bool
@@ -810,6 +809,8 @@ parseOp4 tag f = parseWith go
 
 
 
+lit  :: a -> Expr a
+lit = Lit
 
 array' :: IsValue b => Maybe ArrayCheck -> Expr b -> Expr [a]
 array' = flip Array
@@ -862,7 +863,7 @@ interpolate = Interpolate
 rgb :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Color
 rgb = RGB
 
-rgba :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr UnitInterval -> Expr Color
+rgba :: Expr Word8 -> Expr Word8 -> Expr Word8 -> Expr Number -> Expr Color
 rgba = RGBA
 
 toRgba :: Expr Color -> Expr [a]
