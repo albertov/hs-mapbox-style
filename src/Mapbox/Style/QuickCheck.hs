@@ -18,8 +18,9 @@ import Mapbox.Style (
   , SourceRef, Anchor, LineCap, LineJoin, Alignment, TextFit
   , BoxAnchor, ColorSpace, Justify, TextTransform, FontList(..)
   , Stops, ZoomStop(..), PropStop(..), ZoomPropStop(..), URI(..)
-  , Source, TileJSON, TileScheme, SemVersion, ImageCoordinates
+  , Source, TileJSON, TileScheme, SemVersion, ImageCoordinates, Style'
   , LonLat(..), LonLatZoom(..), MustacheTemplate(..), Bounds(..)
+  , Position(..), Light(..)
   )
 import Mapbox.Style.Expression (Expr(..))
 
@@ -200,8 +201,8 @@ object = scaledOneOf
   , expr_
   ]
 
-color :: Gen (Expr Color)
-color = oneof
+color_ :: Gen (Expr Color)
+color_ = oneof
   [ ToColor <$> arbitrary <*> arbitrary
   , RGB <$> arbitrary <*> arbitrary <*> arbitrary
   , RGBA <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
@@ -269,7 +270,7 @@ instance Arbitrary (Expr SymbolPlacement) where arbitrary = expr_
 instance Arbitrary (Expr Alignment) where arbitrary = expr_
 instance Arbitrary (Expr DashArray) where arbitrary = expr_
 instance Arbitrary (Expr Bool) where arbitrary = boolean
-instance Arbitrary (Expr Color) where arbitrary = color
+instance Arbitrary (Expr Color) where arbitrary = color_
 instance Arbitrary (Expr Word8) where arbitrary = number
 instance Arbitrary (Expr Number) where arbitrary = number
 instance Arbitrary (Expr Text) where arbitrary = string
@@ -301,6 +302,16 @@ instance Arbitrary LonLat where
 
 instance Arbitrary Transition where
   arbitrary = Transition <$> arbitrary <*> arbitrary
+
+instance Arbitrary Position where
+  arbitrary = Position <$> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary Light where
+  arbitrary = Light <$> arbitrary <*> arbitrary
+                    <*> arbitrary <*> arbitrary
+
+
+
 
 instance Arbitrary v => Arbitrary (ZoomStop v) where
   arbitrary = ZoomStop
@@ -334,6 +345,12 @@ instance Arbitrary SemVersion where
 
 instance Arbitrary TileJSON where
   arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance ( Arbitrary l
+         , Arbitrary s
+         ) => Arbitrary (Style' l s) where
+  arbitrary = scale (min maxDepth) genericArbitrary
   shrink = genericShrink
 
 instance Arbitrary v => Arbitrary (Source v) where

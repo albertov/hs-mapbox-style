@@ -955,12 +955,13 @@ instance {-# OVERLAPS #-} FromJSON v => FromJSON [Layer v] where
 
 derefLayers :: [Value] -> Parser [Value]
 derefLayers ls = do
-  byId <- HM.fromList <$> forM ls (withObject "layer" $ \o ->
-      (,) <$> o .: "id" <*> pure o)
+  byId <- HM.fromList . catMaybes <$> mapM withId ls
   mapM (deref byId) ls
   where
+    withId (Object o) = Just <$> ((,) <$> o .: "id" <*> pure o)
+    withId _          = pure Nothing
     deref :: HM.HashMap Text Object -> Value -> Parser Value
-    deref byId = withObject "layer" $ \layer -> do
+    deref byId v@(Object layer) = do
       mRef <- layer .:? "ref"
       case mRef of
         Just ref -> do
@@ -970,7 +971,8 @@ derefLayers ls = do
           let pProps = HM.fromList (catMaybes (map getProp refProps))
               getProp k = (,) <$> pure k <*> (k `HM.lookup` parent)
           pure $ Object (HM.filterWithKey (const . (/="ref")) layer <> pProps)
-        Nothing -> pure (Object layer)
+        Nothing -> pure v
+    deref _ v = pure v
 
     refProps = [ "type", "source", "source-layer", "minzoom", "maxzoom"
                , "filter", "layout"];

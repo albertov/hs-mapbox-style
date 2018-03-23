@@ -4,6 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Mapbox.Style (
   module Mapbox.Style
 
@@ -156,7 +157,7 @@ data Style' l s = Style
   , transition :: Maybe Transition
   , layers     :: [Layer l]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 style' :: Style' l s
 style' = Style

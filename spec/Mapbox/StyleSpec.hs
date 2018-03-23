@@ -1,9 +1,12 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Mapbox.StyleSpec (spec) where
 
 import Mapbox.Style (Style)
 import Mapbox.Style.Layer (derefLayers)
+import Mapbox.Style.QuickCheck ()
+import Mapbox.TestUtil
 import Data.Aeson
 import Test.Hspec
 import System.FilePath.Glob (compile, globDir1)
@@ -14,6 +17,7 @@ import Protolude
 
 spec :: Spec
 spec = do
+  laxJsonProp (Proxy @Style)
   describe "parsing a real-world style and serializing it equals original" $ do
     styles <- runIO (globDir1 (compile "*.json") "spec/data/styles")
     forM_ styles $ \fname -> it fname $ do
