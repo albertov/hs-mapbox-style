@@ -143,9 +143,9 @@ boolean = scaledOneOf
   , Equal <$> arbitrary @(Expr Value) <*> arbitrary
   , GreaterThan <$> arbitrary @(Expr Value) <*> arbitrary
   , GreaterThanEq <$> arbitrary @(Expr Value) <*> arbitrary
-  , All <$> arbitrary <*> arbitrary <*> arbitrary
-  , Any <$> arbitrary <*> arbitrary <*> arbitrary
-  , None <$> arbitrary <*> arbitrary <*> arbitrary
+  , All <$> arbitrary <*> arbitrary
+  , Any <$> arbitrary <*> arbitrary
+  , None <$> arbitrary <*> arbitrary
   , In <$> arbitrary @(Expr Value) <*> arbitrary
   , NotIn <$> arbitrary  @(Expr Value) <*> arbitrary
   , expr_

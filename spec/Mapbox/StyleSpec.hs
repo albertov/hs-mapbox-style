@@ -20,6 +20,7 @@ import Protolude
 spec :: Spec
 spec = do
   laxJsonProp (Proxy @Style)
+
   describe "parsing a real-world style and serializing it equals original" $ do
     styles <- runIO (globDir1 (compile "*.json") "spec/data/styles")
     forM_ styles $ \fname -> it fname $ do
@@ -29,6 +30,12 @@ spec = do
       case (,) <$> eV <*> eS of
         Right (v,s) -> toJSON (s::Style) `shouldBe` v
         Left err -> expectationFailure err
+
+  describe "can parse legacy real-world style" $ do
+    styles <- runIO (globDir1 (compile "*.json") "spec/data/styles/legacy")
+    forM_ styles $ \fname -> it fname $ do
+      bs <- LBS.readFile fname
+      eitherDecode @Style bs `shouldSatisfy` isRight
         
 
 newtype RawStyle = RS { unRaw :: Value }

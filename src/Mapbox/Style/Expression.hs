@@ -98,9 +98,9 @@ data Expr a where
   Equal          :: IsValue b => Expr b -> Expr b -> Expr Bool
   GreaterThan    :: IsValue b => Expr b -> Expr b -> Expr Bool
   GreaterThanEq  :: IsValue b => Expr b -> Expr b -> Expr Bool
-  All            :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-  Any            :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
-  None           :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+  All            :: Expr Bool -> [Expr Bool] -> Expr Bool
+  Any            :: Expr Bool -> [Expr Bool] -> Expr Bool
+  None           :: Expr Bool -> [Expr Bool] -> Expr Bool
   In             :: IsValue b => Expr b -> [Expr b] -> Expr Bool
   NotIn          :: IsValue b => Expr b -> [Expr b] -> Expr Bool
   Case           :: [(Expr Bool, Expr a)] -> Expr a -> Expr a
@@ -257,9 +257,9 @@ instance Eq x => Eq (Expr x) where
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
   GreaterThanEq (a :: Expr a) b == GreaterThanEq (a' :: Expr a') b'
     | Just Refl <- (eqT :: Maybe (a :~: a')) = a == a' && b == b'
-  All a b c == All a' b' c' = a == a' && b == b' && c == c'
-  Any a b c == Any a' b' c' = a == a' && b == b' && c == c'
-  None a b c == None a' b' c' = a == a' && b == b' && c == c'
+  All a b == All a' b' = a == a' && b == b'
+  Any a b == Any a' b' = a == a' && b == b'
+  None a b == None a' b' = a == a' && b == b'
   Case a b == Case a' b' = a == a' && b == b'
   Coalesce a b c == Coalesce a' b' c' = a == a' && b == b' && c == c'
   Match (a :: Expr a) b c == Match (a' :: Expr a') b' c'
@@ -334,11 +334,11 @@ instance IsValue a => ToJSON (Expr a) where
   toJSON (Equal         a b    ) = op2     "=="            a b
   toJSON (GreaterThan   a b    ) = op2     ">"             a b
   toJSON (GreaterThanEq a b    ) = op2     ">="            a b
-  toJSON (All           a b c  ) = op2Args "all"           a b c
-  toJSON (Any           a b c  ) = op2Args "any"           a b c
+  toJSON (All           a b    ) = opArgs "all"           a b
+  toJSON (Any           a b    ) = opArgs "any"           a b
+  toJSON (None          a b    ) = opArgs "none"          a b
   toJSON (In            a b    ) = opArgs  "in"            a b
   toJSON (NotIn         a b    ) = opArgs  "!in"           a b
-  toJSON (None          a b c  ) = op2Args "none"          a b c
   toJSON (Coalesce      a b c  ) = op2Args "coalesce"      a b c
   toJSON (Var           a      ) = op      "var"           a
   toJSON (Concat        a b c  ) = op2Args "concat"        a b c
@@ -532,6 +532,9 @@ parseGet :: IsValue a => Value -> Parser (Expr a)
 parseGet o = parseOp2 "get" (\k v -> Get k (Just v)) o
          <|> parseOp  "get" (flip Get Nothing) o
 
+parseGetStr :: IsValue a => Value -> Parser (Expr a)
+parseGetStr = fmap (flip Get Nothing) . parseJSON
+
 parseAt :: IsValue a => Value -> Parser (Expr a)
 parseAt = parseOp2 "at" At
 
@@ -697,24 +700,24 @@ parseColor o = parseExpr o
 
 parseBool :: Value -> Parser (Expr Bool)
 parseBool o = parseExpr o
-          <|> parseOpArgs               "boolean"    Boolean o
-          <|> parseOp @(Expr Value)     "to-boolean" ToBoolean o
-          <|> parseOp2                  "has"        (\k (v :: Expr (StrMap Value)) -> Has k (Just v)) o
-          <|> parseOp                   "has"        (flip Has (Nothing :: Maybe (Expr (StrMap Value)))) o
-          <|> parseOp2                  "!has"       (\k (v :: Expr (StrMap Value)) -> NotHas k (Just v)) o
-          <|> parseOp                   "!has"       (flip NotHas (Nothing :: Maybe (Expr (StrMap Value)))) o
-          <|> parseOp                   "!"          Not o
-          <|> parseOp2 @(Expr Value)    "!="         NotEqual o
-          <|> parseOp2 @(Expr Value)    "<"          LessThan o
-          <|> parseOp2 @(Expr Value)    "<="         LessThanEq o
-          <|> parseOp2 @(Expr Value)    "=="         Equal o
-          <|> parseOp2 @(Expr Value)    ">"          GreaterThan o
-          <|> parseOp2 @(Expr Value)    ">="         GreaterThanEq o
-          <|> parseOp2Args              "all"        All o
-          <|> parseOp2Args              "any"        Any o
-          <|> parseOp2Args              "none"       None o
-          <|> parseOpArgs @(Expr Value) "in"         In o
-          <|> parseOpArgs @(Expr Value) "!in"        NotIn o
+          <|> parseOpArgs           "boolean"    Boolean o
+          <|> parseOp @(Expr Value) "to-boolean" ToBoolean o
+          <|> parseOp2              "has"        (\k (v :: Expr (StrMap Value)) -> Has k (Just v)) o
+          <|> parseOp               "has"        (flip Has (Nothing :: Maybe (Expr (StrMap Value)))) o
+          <|> parseOp2              "!has"       (\k (v :: Expr (StrMap Value)) -> NotHas k (Just v)) o
+          <|> parseOp               "!has"       (flip NotHas (Nothing :: Maybe (Expr (StrMap Value)))) o
+          <|> parseOp               "!"          Not o
+          <|> parseOp2E @Value      "!="         NotEqual o
+          <|> parseOp2E @Value      "<"          LessThan o
+          <|> parseOp2E @Value      "<="         LessThanEq o
+          <|> parseOp2E @Value      "=="         Equal o
+          <|> parseOp2E @Value      ">"          GreaterThan o
+          <|> parseOp2E @Value      ">="         GreaterThanEq o
+          <|> parseOpEArgs         "all"        All o
+          <|> parseOpEArgs         "any"        Any o
+          <|> parseOpEArgs         "none"       None o
+          <|> parseOpEArgs @Value   "in"         In o
+          <|> parseOpEArgs @Value   "!in"        NotIn o
 
 parseWith :: (Text -> [Value] -> Parser a) -> Value -> Parser a
 parseWith go = withArray "expression" $ \a ->
@@ -759,6 +762,16 @@ parseOpArgs tag f = parseWith go
       | tag==tag'  = fail (toS ("expected at least one arg for " <> tag))
       | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
 
+parseOpEArgs :: (IsValue a, FromJSON (Expr a)) => Text -> (Expr a -> [Expr a] -> Expr b) -> Value -> Parser (Expr b)
+parseOpEArgs tag f = parseWith go
+  where
+    go tag' (a:xs)
+      | tag==tag'  = f <$> (parseJSON a <|> parseGetStr a)
+                       <*> traverse parseJSON xs
+    go tag' _
+      | tag==tag'  = fail (toS ("expected at least one arg for " <> tag))
+      | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
+
 
 op2 :: (ToJSON a, ToJSON b) => Text -> a -> b -> Aeson.Value
 op2 name a b = toJSON [toJSON name, toJSON a, toJSON b]
@@ -768,6 +781,16 @@ parseOp2 tag f = parseWith go
   where
     go tag' [x,y]
       | tag==tag' = f <$> parseJSON x <*> parseJSON y
+    go tag' _
+      | tag==tag'  = fail (toS ("expected two args for " <> tag))
+      | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
+
+parseOp2E :: (IsValue a, FromJSON (Expr a), FromJSON (Expr b)) => Text -> (Expr a -> Expr b -> Expr c) -> Value -> Parser (Expr c)
+parseOp2E tag f = parseWith go
+  where
+    go tag' [x,y]
+      | tag==tag' = f <$> (parseJSON x <|> parseGetStr x)
+                      <*> parseJSON y
     go tag' _
       | tag==tag'  = fail (toS ("expected two args for " <> tag))
       | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
@@ -783,6 +806,7 @@ parseOp2Args tag f = parseWith go
     go tag' _
       | tag==tag'  = fail (toS ("expected at least two args for " <> tag))
       | otherwise  = fail (toS ("unknown tag " <> tag' <> ", expected " <> tag))
+
 
 op3 :: (ToJSON a, ToJSON b, ToJSON c) => Text -> a -> b -> c -> Aeson.Value
 op3 name a b c = toJSON [toJSON name, toJSON a, toJSON b, toJSON c]
@@ -884,13 +908,13 @@ downcase = Downcase
 upcase :: Expr Text -> Expr Text
 upcase = Upcase
 
-all_ :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+all_ :: Expr Bool -> [Expr Bool] -> Expr Bool
 all_ = All
 
-any_ :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+any_ :: Expr Bool -> [Expr Bool] -> Expr Bool
 any_ = Any
 
-none :: Expr Bool -> Expr Bool -> [Expr Bool] -> Expr Bool
+none :: Expr Bool -> [Expr Bool] -> Expr Bool
 none = None
 
 length_ :: IsValue b => Expr b -> Expr a
