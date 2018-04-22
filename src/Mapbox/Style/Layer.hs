@@ -80,12 +80,12 @@ import Protolude hiding (filter,join)
 
 
 
-data Layer v
+data Layer m v
   = Background
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -98,7 +98,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -116,7 +116,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -141,7 +141,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -202,7 +202,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -220,7 +220,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -242,7 +242,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -260,7 +260,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -276,7 +276,7 @@ data Layer v
     { id          :: Text
     , visibility  :: Maybe Visibility
     , interactive :: Maybe Bool
-    , metadata    :: Maybe (StrMap Value)
+    , metadata    :: Maybe m
     , minzoom     :: Maybe Zoom
     , maxzoom     :: Maybe Zoom
     , filter      :: Maybe (Expr Bool)
@@ -292,7 +292,7 @@ data Layer v
   | VendorLayer v
   deriving (Eq, Show, Generic)
 
-background :: Text -> Layer v
+background :: Text -> Layer m v
 background id = Background
   { id
   , visibility  = Nothing
@@ -307,7 +307,7 @@ background id = Background
   , opacity     = Nothing
   }
 
-fill :: Text -> SourceRef -> Layer v
+fill :: Text -> SourceRef -> Layer m v
 fill id source = Fill
   { id
   , visibility  = Nothing
@@ -327,7 +327,7 @@ fill id source = Fill
   , pattern         = Nothing
   }
 
-line :: Text -> SourceRef -> Layer v
+line :: Text -> SourceRef -> Layer m v
 line id source = Line
   { id
   , visibility  = Nothing
@@ -354,7 +354,7 @@ line id source = Line
   , pattern     = Nothing
   }
 
-symbol :: Text -> SourceRef -> Layer v
+symbol :: Text -> SourceRef -> Layer m v
 symbol id source = Symbol
   { id
   , visibility  = Nothing
@@ -417,7 +417,7 @@ symbol id source = Symbol
   , textTranslateAnchor  = Nothing
   }
 
-rasterLayer :: Text -> SourceRef -> Layer v
+rasterLayer :: Text -> SourceRef -> Layer m v
 rasterLayer id source = RasterLayer
   { id
   , visibility  = Nothing
@@ -436,7 +436,7 @@ rasterLayer id source = RasterLayer
   , fadeDuration  = Nothing
   }
 
-circle :: Text -> SourceRef -> Layer v
+circle :: Text -> SourceRef -> Layer m v
 circle id source = Circle
   { id
   , visibility  = Nothing
@@ -460,7 +460,7 @@ circle id source = Circle
   , strokeOpacity   = Nothing
   }
 
-fillExtrusion :: Text -> SourceRef -> Layer v
+fillExtrusion :: Text -> SourceRef -> Layer m v
 fillExtrusion id source = FillExtrusion
   { id
   , visibility  = Nothing
@@ -480,7 +480,7 @@ fillExtrusion id source = FillExtrusion
   , base    = Nothing
   }
 
-heatmap :: Text -> SourceRef -> Layer v
+heatmap :: Text -> SourceRef -> Layer m v
 heatmap id source = Heatmap
   { id
   , visibility  = Nothing
@@ -498,7 +498,7 @@ heatmap id source = Heatmap
   , opacity     = Nothing
   }
 
-hillshade :: Text -> SourceRef -> Layer v
+hillshade :: Text -> SourceRef -> Layer m v
 hillshade id source = Hillshade
   { id
   , visibility  = Nothing
@@ -527,7 +527,7 @@ paintProps = mapProp "paint"
 layoutProps = mapProp "layout"
 
 
-instance ToJSON v => ToJSON (Layer v) where
+instance (ToJSON m, ToJSON v) => ToJSON (Layer m v) where
   toJSON (Background {..}) = object $ catMaybes
     [ Just ("id" .= id), Just ("type","background")
     , prop "metadata" metadata
@@ -774,7 +774,7 @@ transProp t (Just (T o (Just tr))) =
   , (t <> "-transition") .= tr
   ]
 
-instance FromJSON v => FromJSON (Layer v) where
+instance (FromJSON m, FromJSON v) => FromJSON (Layer m v) where
   parseJSON ob@(Object m) = do
     id <- m .: "id"
     metadata <- m .:? "metadata"
@@ -952,7 +952,7 @@ sourceRefPairs :: SourceRef -> [Pair]
 sourceRefPairs (VectorSourceRef s l) = ["source".=s, "source-layer".=l]
 sourceRefPairs (SourceRef s) = ["source".=s]
 
-instance {-# OVERLAPS #-} FromJSON v => FromJSON [Layer v] where
+instance {-# OVERLAPS #-} (FromJSON m, FromJSON v) => FromJSON [Layer m v] where
   parseJSON = mapM parseJSON <=< derefLayers <=< parseJSON
 
 derefLayers :: [Value] -> Parser [Value]

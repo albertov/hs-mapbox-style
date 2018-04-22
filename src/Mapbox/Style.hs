@@ -143,9 +143,9 @@ import Data.Aeson.TH (deriveJSON)
 import Protolude hiding (get)
 import Prelude (fail)
 
-type Style = Style' (StrMap Value) () ()
+type Style = Style' (StrMap Value) (StrMap Value) () ()
 
-data Style' m l s = Style
+data Style' m lm l s = Style
   { version    :: Int
   , name       :: Maybe Text
   , metadata   :: Maybe m
@@ -158,11 +158,11 @@ data Style' m l s = Style
   , sprite     :: Maybe URI
   , glyphs     :: Maybe URI
   , transition :: Maybe Transition
-  , layers     :: [Layer l]
+  , layers     :: [Layer lm l]
   }
   deriving (Eq, Show, Generic)
 
-style' :: Style' m l s
+style' :: Style' m lm l s
 style' = Style
   { version    = 8
   , name       = Nothing

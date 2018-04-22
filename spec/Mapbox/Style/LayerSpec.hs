@@ -10,4 +10,4 @@ import Test.Hspec
 
 spec :: Spec
 spec =  do
-    laxJsonProp (Proxy :: Proxy (Layer ()))
+    laxJsonProp (Proxy :: Proxy (Layer () ()))
