@@ -143,12 +143,12 @@ import Data.Aeson.TH (deriveJSON)
 import Protolude hiding (get)
 import Prelude (fail)
 
-type Style = Style' () ()
+type Style = Style' (StrMap Value) () ()
 
-data Style' l s = Style
+data Style' m l s = Style
   { version    :: Int
   , name       :: Maybe Text
-  , metadata   :: Maybe (StrMap Value)
+  , metadata   :: Maybe m
   , center     :: Maybe LonLat
   , zoom       :: Maybe Zoom
   , bearing    :: Maybe Double
@@ -162,7 +162,7 @@ data Style' l s = Style
   }
   deriving (Eq, Show, Generic)
 
-style' :: Style' l s
+style' :: Style' m l s
 style' = Style
   { version    = 8
   , name       = Nothing

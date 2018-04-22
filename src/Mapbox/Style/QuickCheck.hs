@@ -349,9 +349,10 @@ instance Arbitrary TileJSON where
   arbitrary = genericArbitrary
   shrink = genericShrink
 
-instance ( Arbitrary l
+instance ( Arbitrary m
+         , Arbitrary l
          , Arbitrary s
-         ) => Arbitrary (Style' l s) where
+         ) => Arbitrary (Style' m l s) where
   arbitrary = scale (min maxDepth) genericArbitrary
   shrink = genericShrink
 
