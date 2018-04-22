@@ -21,6 +21,7 @@ import Mapbox.Style (
   , Source, TileJSON, TileScheme, SemVersion, ImageCoordinates, Style'
   , LonLat(..), LonLatZoom(..), MustacheTemplate(..), Bounds(..)
   , Position(..), Light(..), Padding
+  , VectorLayer(..), FieldType(..)
   )
 import Mapbox.Style.Expression (Expr(..))
 
@@ -38,8 +39,8 @@ maxDepth = 5
 lit  :: Arbitrary a => Gen (Expr a)
 lit = Lit <$> arbitrary
 
-id  :: Gen (Expr a)
-id = pure Id
+id_  :: Gen (Expr a)
+id_ = pure Id
 
 at  :: (IsValue a, Arbitrary a) => Gen (Expr a)
 at = At <$> arbitrary <*> arbitrary
@@ -102,7 +103,7 @@ expr_ = scale (min maxDepth) $ sized $ \n -> if n==0 then lit else resize (n-1) 
   , step_
   , at
   , get
-  , id
+  , id_
   , let_
   , var
   ]
@@ -378,7 +379,13 @@ instance Arbitrary Padding where
   arbitrary = genericArbitrary
   shrink = genericShrink
 
+instance Arbitrary FieldType where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
 
+instance Arbitrary VectorLayer where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
 
 instance Arbitrary (XY v) where
   arbitrary = XY <$> arbitrary <*> arbitrary

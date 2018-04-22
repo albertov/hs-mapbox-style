@@ -31,6 +31,7 @@ makePrisms ''Justify
 makePrisms ''BoxAnchor
 makePrisms ''TextTransform
 makePrisms ''TileScheme
+makePrisms ''FieldType
 makeUnderscoreSuffixedFields ''Property
 makeUnderscoreSuffixedFields ''Source
 makeUnderscoreSuffixedFields ''Layer
@@ -39,6 +40,7 @@ makeUnderscoreSuffixedFields ''Transitionable
 makeUnderscoreSuffixedFields ''Transition
 makeUnderscoreSuffixedFields ''ImageCoordinates
 makeUnderscoreSuffixedFields ''TileJSON
+makeUnderscoreSuffixedFields ''VectorLayer
 makeUnderscoreSuffixedFields ''LonLat
 makeUnderscoreSuffixedFields ''LonLatZoom
 makeUnderscoreSuffixedFields ''Bounds

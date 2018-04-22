@@ -8,15 +8,19 @@
 module Mapbox.Style.TileJSON (
   TileJSON (..)
 , TileScheme (..)
+, FieldType (..)
+, VectorLayer (..)
 , MustacheTemplate (..)
 , SemVersion (..)
 , tileJSON
+, vectorLayer
 ) where
 
 import Mapbox.Style.Common (prop)
 import Mapbox.Style.Types
 
 import Data.Aeson
+import Data.HashMap.Strict (HashMap)
 import Protolude
 import qualified Data.Text as T
 import Prelude (fail)
@@ -61,6 +65,7 @@ data TileJSON = TileJSON
   , maxzoom     :: Maybe Zoom
   , bounds      :: Maybe Bounds
   , center      :: Maybe LonLatZoom
+  , vectorLayers :: [VectorLayer]
   } deriving (Eq, Show, Generic)
 
 tileJSON :: URI -> TileJSON
@@ -79,6 +84,7 @@ tileJSON uri = TileJSON
   , maxzoom     = Nothing
   , bounds      = Nothing
   , center      = Nothing
+  , vectorLayers = []
   }
 
 
@@ -98,6 +104,7 @@ instance ToJSON TileJSON where
     , prop "maxzoom" maxzoom
     , prop "bounds" bounds
     , prop "center" center
+    , prop "vector_layers" (if null vectorLayers then Nothing else Just vectorLayers)
     ]
 
 instance FromJSON TileJSON where
@@ -116,6 +123,7 @@ instance FromJSON TileJSON where
     maxzoom <- o .:? "maxzoom"
     bounds <- o .:? "bounds"
     center <- o .:? "center"
+    vectorLayers <- o .:? "vector_layers" .!= []
     pure TileJSON {..}
 
 data TileScheme = XYZ | TMS
@@ -133,3 +141,47 @@ instance FromJSON TileScheme where
 
 newtype MustacheTemplate = MustacheTemplate Text
   deriving (Eq, Show, IsString, ToJSON, FromJSON)
+
+data VectorLayer = VectorLayer
+  { id      :: Text
+  , description :: Maybe Text
+  , minzoom :: Maybe Zoom
+  , maxzoom :: Maybe Zoom
+  , fields  :: HashMap Text FieldType
+  } deriving (Eq, Show, Generic)
+
+vectorLayer :: Text -> VectorLayer
+vectorLayer id_ = VectorLayer
+  { id          = id_
+  , description = Nothing
+  , minzoom     = Nothing
+  , maxzoom     = Nothing
+  , fields      = mempty
+  }
+
+data FieldType = StringType | NumberType | BooleanType
+  deriving (Eq, Show, Enum, Bounded, Generic)
+
+instance FromJSON FieldType where
+  parseJSON = withText "FieldType" $ \case
+    "String" -> pure StringType
+    "Number" -> pure NumberType
+    "Boolean" -> pure BooleanType
+    other     -> fail (toS ("Unknown field type: " <> other))
+
+instance ToJSON FieldType where
+  toJSON StringType = String "String"
+  toJSON NumberType = String "Number"
+  toJSON BooleanType = String "Boolean"
+
+
+jsonOpts :: Options
+jsonOpts = defaultOptions { omitNothingFields = True}
+
+instance ToJSON VectorLayer where
+  toJSON = genericToJSON jsonOpts
+  toEncoding = genericToEncoding jsonOpts
+
+instance FromJSON VectorLayer where
+  parseJSON = genericParseJSON jsonOpts
+

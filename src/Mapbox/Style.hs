@@ -120,7 +120,10 @@ module Mapbox.Style (
 , TileScheme (..)
 , MustacheTemplate (..)
 , SemVersion (..)
+, FieldType (..)
+, VectorLayer (..)
 , tileJSON
+, vectorLayer
 
 , module Mapbox.Style.Lens
 ) where
