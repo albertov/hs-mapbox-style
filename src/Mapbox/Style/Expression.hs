@@ -88,6 +88,7 @@ data Expr a where
   Properties     :: Expr (StrMap a)
   At             :: Int -> Expr [a] -> Expr a
   Get            :: Text -> Maybe (Expr (StrMap a)) -> Expr a
+  LegacyGet      :: Text -> Expr a -- this node is to distibuised legacy attr getters
   Has            :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
   NotHas         :: IsValue b => Text -> Maybe (Expr (StrMap b)) -> Expr Bool
   Length         :: IsValue b => Expr b -> Expr a
@@ -322,6 +323,7 @@ instance IsValue a => ToJSON (Expr a) where
   toJSON (At            a b    ) = op2     "at"            a b
   toJSON (Get    a (Just b)    ) = op2     "get"           a b
   toJSON (Get    a Nothing     ) = op      "get"           a
+  toJSON (LegacyGet a          ) = toJSON a
   toJSON (Has    a (Just b)    ) = op2     "has"           a b
   toJSON (Has    a Nothing     ) = op      "has"           a
   toJSON (NotHas a (Just b)    ) = op2     "!has"          a b
@@ -532,8 +534,8 @@ parseGet :: IsValue a => Value -> Parser (Expr a)
 parseGet o = parseOp2 "get" (\k v -> Get k (Just v)) o
          <|> parseOp  "get" (flip Get Nothing) o
 
-parseGetStr :: IsValue a => Value -> Parser (Expr a)
-parseGetStr = fmap (flip Get Nothing) . parseJSON
+parseLegacyGet :: IsValue a => Value -> Parser (Expr a)
+parseLegacyGet = fmap LegacyGet . parseJSON
 
 parseAt :: IsValue a => Value -> Parser (Expr a)
 parseAt = parseOp2 "at" At
@@ -766,7 +768,7 @@ parseOpEArgs :: (IsValue a, FromJSON (Expr a)) => Text -> (Expr a -> [Expr a] ->
 parseOpEArgs tag f = parseWith go
   where
     go tag' (a:xs)
-      | tag==tag'  = f <$> (parseJSON a <|> parseGetStr a)
+      | tag==tag'  = f <$> (parseLegacyGet a <|> parseJSON a)
                        <*> traverse parseJSON xs
     go tag' _
       | tag==tag'  = fail (toS ("expected at least one arg for " <> tag))
@@ -789,7 +791,7 @@ parseOp2E :: (IsValue a, FromJSON (Expr a), FromJSON (Expr b)) => Text -> (Expr 
 parseOp2E tag f = parseWith go
   where
     go tag' [x,y]
-      | tag==tag' = f <$> (parseJSON x <|> parseGetStr x)
+      | tag==tag' = f <$> (parseLegacyGet x <|> parseJSON x)
                       <*> parseJSON y
     go tag' _
       | tag==tag'  = fail (toS ("expected two args for " <> tag))
