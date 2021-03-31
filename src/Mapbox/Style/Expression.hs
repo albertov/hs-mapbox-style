@@ -60,13 +60,10 @@ import Mapbox.Style.Types (Number, StrMap, Color)
 
 import Data.Aeson (Value, FromJSON(..), ToJSON(..), withText, withArray)
 import Data.Aeson.Types (Parser)
-import Data.Semigroup (Semigroup)
-import qualified Data.Semigroup as SG
 import Data.Typeable
 import qualified Data.Aeson as Aeson
 import Data.String (IsString(fromString))
 import qualified Data.Vector as V
-import Data.Word (Word8)
 import Protolude hiding (Any, All, all, any, get, concat, length)
 import Prelude (fail)
 

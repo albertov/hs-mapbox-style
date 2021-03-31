@@ -8,12 +8,11 @@ module Mapbox.Style.Common (
 
 import Data.Aeson
 import Data.Aeson.Types (Parser, Pair)
-import Data.List.NonEmpty (NonEmpty)
 import qualified Data.Vector as V
 import Protolude
-import Prelude (fail)
+import Prelude (MonadFail(fail))
 
-failT :: Monad m => Text -> m a
+failT :: MonadFail m => Text -> m a
 failT = fail . toS
 {-# INLINE failT #-}
 

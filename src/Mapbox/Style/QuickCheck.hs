@@ -28,9 +28,8 @@ import Mapbox.Style.Expression (Expr(..))
 import qualified Data.Aeson as Aeson
 import Data.Aeson (Value)
 import Test.QuickCheck hiding (Property)
-import Test.QuickCheck.Arbitrary.Generic (genericArbitrary, genericShrink)
+import Test.QuickCheck.Arbitrary.Generic (genericArbitrary)
 import Test.QuickCheck.Instances ()
-import Data.List (words)
 import Protolude hiding (Any, All, get)
 
 maxDepth :: Int

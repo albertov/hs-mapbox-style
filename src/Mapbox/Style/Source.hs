@@ -29,7 +29,6 @@ import Mapbox.Style.TileJSON (TileJSON)
 
 import Data.Aeson
 import Data.Aeson.Types (Pair)
-import Data.List.NonEmpty (NonEmpty)
 import qualified Data.HashMap.Strict as HM
 import Protolude
 import Prelude (fail)
