@@ -27,7 +27,7 @@ library
     Mapbox.Style.TileJSON
   -- other-modules:       
   build-depends:
-    base >=4.10 && <4.14,
+    base >=4.10 && <4.15,
     aeson >=1.2 && <1.5,
     lens,
     protolude,
