@@ -28,8 +28,8 @@ import Mapbox.Style.Types (URI, Zoom, Number, LonLat)
 import Mapbox.Style.TileJSON (TileJSON)
 
 import Data.Aeson
+import qualified Data.Aeson.KeyMap as KeyMap
 import Data.Aeson.Types (Pair)
-import qualified Data.HashMap.Strict as HM
 import Protolude
 import Prelude (fail)
 
@@ -176,7 +176,7 @@ injectType :: Text -> Value -> Value
 injectType ty = injectPairs [("type",String ty)]
 
 injectPairs :: [Pair] -> Value -> Value
-injectPairs ps (Object o) = Object (foldr (uncurry HM.insert) o ps)
+injectPairs ps (Object o) = Object (foldr (uncurry KeyMap.insert) o ps)
 injectPairs _  o          = o
 
 

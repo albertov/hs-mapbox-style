@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                hs-mapbox-style
-version:             0.1.1.0
+version:             0.1.2.0
 synopsis:            Mapbox Style Haskell types
 -- description:         
 homepage:            https://github.com/albertov/hs-mapbox-style
@@ -27,8 +27,8 @@ library
     Mapbox.Style.TileJSON
   -- other-modules:       
   build-depends:
-    base >=4.10 && <4.15,
-    aeson >=1.2 && <1.5,
+    base >=4.10 && <4.17,
+    aeson >2,
     lens,
     protolude,
     QuickCheck,

@@ -71,8 +71,10 @@ import Mapbox.Style.Expression ( Expr(Lit), IsValue(..), parseExpr, parseArray
                                )
 import Mapbox.Style.Types
 import Data.Aeson
+import Data.Aeson.Key (fromText)
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (Pair, Parser)
+import qualified Data.Aeson.KeyMap as KeyMap
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import GHC.Exts (IsList(..))
@@ -520,7 +522,7 @@ hillshade id source = Hillshade
 mapProp :: Text -> [[Pair]] -> Maybe Pair
 mapProp k pss = case concat pss of
   [] -> Nothing
-  ps -> Just (k .= object ps)
+  ps -> Just (fromText k .= object ps)
 
 paintProps, layoutProps :: [[Pair]] -> Maybe Pair
 paintProps = mapProp "paint"
@@ -761,17 +763,17 @@ propL
   :: ToJSON o
   => Text -> Maybe o
   -> [Pair]
-propL t = maybeToList . fmap (t.=)
+propL t = maybeToList . fmap (fromText t .=)
 
 transProp
   :: IsValue o
   => Text -> Maybe (Transitionable (Property o))
   -> [Pair]
 transProp _ Nothing = []
-transProp t (Just (T o Nothing)) = [t .= o]
+transProp t (Just (T o Nothing)) = [fromText t .= o]
 transProp t (Just (T o (Just tr))) =
-  [ t .= o
-  , (t <> "-transition") .= tr
+  [ fromText t .= o
+  , fromText (t <> "-transition") .= tr
   ]
 
 instance (FromJSON m, FromJSON v) => FromJSON (Layer m v) where
@@ -928,13 +930,13 @@ instance (FromJSON m, FromJSON v) => FromJSON (Layer m v) where
 
     where
     getProp :: FromJSON a => Object -> Text -> Parser (Maybe a)
-    getProp = (.:?)
+    getProp o k = o .:? fromText k
 
     getTransitionableProp :: FromJSON a => Object -> Text -> Parser (Maybe (Transitionable a))
     getTransitionableProp o p = do
-      mv <- o .:? p
+      mv <- o .:? fromText p
       case mv of
-        Just v  -> Just <$> (T <$> pure v <*> o .:? (p<>"-transition"))
+        Just v  -> Just <$> (T <$> pure v <*> o .:? fromText (p<>"-transition"))
         Nothing -> pure Nothing
 
   parseJSON other = VendorLayer <$> parseJSON other
@@ -957,22 +959,22 @@ instance {-# OVERLAPS #-} (FromJSON m, FromJSON v) => FromJSON [Layer m v] where
 
 derefLayers :: [Value] -> Parser [Value]
 derefLayers ls = do
-  byId <- HM.fromList . catMaybes <$> mapM withId ls
+  byId <- KeyMap.fromList . catMaybes <$> mapM withId ls
   mapM (deref byId) ls
   where
     withId (Object o) = Just <$> ((,) <$> o .: "id" <*> pure o)
     withId _          = pure Nothing
-    deref :: HM.HashMap Text Object -> Value -> Parser Value
+    deref :: KeyMap.KeyMap Object -> Value -> Parser Value
     deref byId v@(Object layer) = do
       mRef <- layer .:? "ref"
       case mRef of
         Just ref -> do
           parent <- maybe (failT ("invalid ref:" <> ref))
                     pure
-                    (ref `HM.lookup` byId)
-          let pProps = HM.fromList (catMaybes (map getProp refProps))
-              getProp k = (,) <$> pure k <*> (k `HM.lookup` parent)
-          pure $ Object (HM.filterWithKey (const . (/="ref")) layer <> pProps)
+                    (fromText ref `KeyMap.lookup` byId)
+          let pProps = KeyMap.fromList (catMaybes (map getProp refProps))
+              getProp k = (,) <$> pure k <*> (k `KeyMap.lookup` parent)
+          pure $ Object (KeyMap.filterWithKey (const . (/= fromText "ref")) layer <> pProps)
         Nothing -> pure v
     deref _ v = pure v
 

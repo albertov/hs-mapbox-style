@@ -15,14 +15,14 @@ module Mapbox.Style.Types (
 ) where
 
 import Data.Aeson (FromJSON(..), ToJSON(..))
-import Data.HashMap.Strict (HashMap)
+import Data.Aeson.KeyMap (KeyMap)
 import Data.Scientific (Scientific)
 import Protolude
 import Prelude (fail)
 
 type Number = Scientific
 type Zoom   = Number
-type StrMap = HashMap Text
+type StrMap = KeyMap
 
 newtype Color = Color Text
   deriving (Show, Eq, Typeable, IsString, ToJSON, FromJSON)

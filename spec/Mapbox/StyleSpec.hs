@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 module Mapbox.StyleSpec (spec) where
 
 import Mapbox.Style (Style)
@@ -8,11 +9,12 @@ import Mapbox.Style.Layer (derefLayers)
 import Mapbox.Style.QuickCheck ()
 import Mapbox.TestUtil
 import Data.Aeson
+import Data.Aeson.Key (toText)
 import Data.Aeson.Types (Parser)
 import Test.Hspec
 import System.FilePath.Glob (compile, globDir1)
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.HashMap.Strict as HM
+import qualified Data.Aeson.KeyMap as KeyMap
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import Protolude
@@ -45,16 +47,16 @@ instance FromJSON RawStyle where
   parseJSON = withObject "raw style" $ \o -> do
     ls <- derefLayers . map normalizeLayerKeys =<< o .: "layers"
     ss <- map normalizeSource <$> (o .: "sources" :: Parser Object)
-    let o' = HM.filterWithKey (const . (`notElem` ignoreRootKeys)) o
+    let o' = KeyMap.filterWithKey (const . (`notElem` ignoreRootKeys)) o
         ignoreRootKeys =
           ["id", "created", "modified", "owner", "draft", "visibility"]
     pure $ RS $ Data.Aeson.Object
-      $ HM.insert "layers" (toJSON ls)
-      $ HM.insert "sources" (Object ss)
+      $ KeyMap.insert "layers" (toJSON ls)
+      $ KeyMap.insert "sources" (Object ss)
       $ o'
 
 normalizeSource :: Value -> Value
-normalizeSource (Object o) = Object $ HM.filterWithKey go o
+normalizeSource (Object o) = Object $ KeyMap.filterWithKey go o
  where
     go "grids" (Array o') = not (V.null o')
     go "data"  (Array o') = not (V.null o')
@@ -65,20 +67,20 @@ normalizeSource v = v
 -- and normalizes empty paint/layout dicts
 normalizeLayerKeys :: Value -> Value
 normalizeLayerKeys (Object o) =
-  Object $ HM.mapWithKey normalize $ HM.filterWithKey go o
+  Object $ runIdentity $ KeyMap.traverseWithKey normalize $ KeyMap.filterWithKey go o
   where
-    go "layout" (Object o') = not (HM.null o')
-    go "paint" (Object o') = not (HM.null o')
-    go "nextDropPoint" _   = False
-    go "xray" _   = False
-    go k _ | "paint." `T.isPrefixOf` k = False
+    go (toText -> "layout") (Object o') = not (KeyMap.null o')
+    go (toText -> "paint") (Object o') = not (KeyMap.null o')
+    go (toText -> "nextDropPoint") _   = False
+    go (toText -> "xray") _   = False
+    go k _ | "paint." `T.isPrefixOf` (toText k) = False
     go _ _  = True
-    normalize "paint" (Object p) = Object (map goProp p)
-    normalize "layout" (Object p) = Object (map goProp p)
-    normalize _ v = v
-    goProp (Object fun) = Object (HM.filterWithKey goFun fun)
+    normalize (toText -> "paint") (Object p) = pure $ Object (map goProp p)
+    normalize (toText -> "layout") (Object p) = pure $ Object (map goProp p)
+    normalize _ v = pure v
+    goProp (Object fun) = Object (KeyMap.filterWithKey goFun fun)
     goProp v = v
-    goFun "type" "identity" = False
+    goFun (toText -> "type") "identity" = False
     goFun _ _ = True
 
 normalizeLayerKeys x = x

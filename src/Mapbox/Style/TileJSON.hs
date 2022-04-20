@@ -41,7 +41,7 @@ showVersion (SemVersion major minor patch) =
 
 parseSemVersion :: Text -> Maybe SemVersion
 parseSemVersion s
-  | [major,minor,patch] <- map toS (T.splitOn "." s)
+  | [major,minor,patch] <- T.splitOn "." s
   = SemVersion <$> readMaybe major
                <*> readMaybe minor
                <*> readMaybe patch

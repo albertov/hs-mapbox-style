@@ -67,7 +67,6 @@ import qualified Data.Vector as V
 import Protolude hiding (Any, All, all, any, get, concat, length)
 import Prelude (fail)
 
-
 data Expr a where
   Array          :: IsValue b => Expr b -> Maybe ArrayCheck -> Expr a
   Boolean        :: Expr Value -> [Expr Value] -> Expr Bool
@@ -174,7 +173,6 @@ instance Semigroup (Expr Text) where
 
 instance Monoid (Expr Text) where
   mempty = Lit ""
-  mappend a b = Concat a b []
 
 instance (IsValue a, Num a) => Num (Expr a) where
   fromInteger = Lit . fromInteger

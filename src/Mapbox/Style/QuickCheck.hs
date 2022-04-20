@@ -94,7 +94,7 @@ coalesce_ = scale (min maxDepth) $ sized $ \n -> if n>0
   else lit
 
 expr_  :: (IsValue a, Arbitrary a, Arbitrary (Expr a)) => Gen (Expr a)
-expr_ = scale (min maxDepth) $ sized $ \n -> if n==0 then lit else resize (n-1) $ oneof
+expr_ = scale (min maxDepth) $ sized $ \n -> if n>0 then resize (n-1) (oneof
   [ lit
   , case_
   , coalesce_
@@ -105,12 +105,12 @@ expr_ = scale (min maxDepth) $ sized $ \n -> if n==0 then lit else resize (n-1) 
   , id_
   , let_
   , var
-  ]
+  ]) else lit
 
 interpolableExpr_  :: (IsValue a, Arbitrary a, Arbitrary (Expr a)) => Gen (Expr a)
 interpolableExpr_ = oneof
   [ expr_
-  , sized $ \n -> if n==0 then lit else resize (n-1) interpolate_
+  , sized $ \n -> if n>0 then resize (n-1) interpolate_ else lit
   ]
 
 interpolate_
@@ -210,8 +210,8 @@ color_ = oneof
    ]
 
 scaledOneOf :: Arbitrary a => [Gen (Expr a)] -> Gen (Expr a)
-scaledOneOf xs = scale (min maxDepth) $ sized $ \n -> if n==0 then lit
-  else resize (n-1) (oneof xs)
+scaledOneOf xs = scale (min maxDepth) $ sized $ \n -> if n>0
+  then resize (n-1) (oneof xs) else lit
 
 
 instance (IsValue a, Arbitrary a) => Arbitrary (Expr [a]) where
@@ -220,22 +220,6 @@ instance (IsValue a, Arbitrary a) => Arbitrary (Expr [a]) where
     array = Array <$> arbitrary @(Expr Value) <*> arbitrary
     toRgba = ToRGBA <$> arbitrary
     
-instance Arbitrary Aeson.Value where
-    arbitrary = scale (min maxDepth) $ sized $ \n ->
-        if n > 0
-          then
-            oneof [ Aeson.Object <$> resize (n-1) arbitrary
-                  , Aeson.Array  <$> resize (n-1) arbitrary
-                  , Aeson.String  <$> arbitrary
-                  , Aeson.Number  <$> arbitrary
-                  , pure Aeson.Null
-                  ]
-          else
-            oneof [ Aeson.String  <$> arbitrary
-                  , Aeson.Number  <$> arbitrary
-                  , pure Aeson.Null
-                  ]
-
 instance Arbitrary TileScheme where arbitrary = elements [minBound..maxBound]
 instance Arbitrary ExprType where arbitrary = elements [minBound..maxBound]
 instance Arbitrary Justify where arbitrary = elements [minBound..maxBound]

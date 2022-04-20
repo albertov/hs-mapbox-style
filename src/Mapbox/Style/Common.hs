@@ -7,6 +7,7 @@ module Mapbox.Style.Common (
 ) where
 
 import Data.Aeson
+import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (Parser, Pair)
 import qualified Data.Vector as V
 import Protolude
@@ -32,5 +33,5 @@ parsePairs xs = forM [0,2 .. V.length xs -1] $ \i ->
 {-# INLINEABLE parsePairs #-}
 
 prop :: ToJSON a => Text -> Maybe a -> Maybe Pair
-prop k = fmap (k .=)
+prop k = fmap (fromText k .=)
 {-# INLINE prop #-}
